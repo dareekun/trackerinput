@@ -134,10 +134,3 @@ class AuthRepository {
     return count == 1;
   }
 }
-
-extension on DatabaseException {
-  bool isUniqueConstraintError() {
-    final m = toString().toLowerCase();
-    return m.contains('unique constraint') || m.contains('code 2067') || m.contains('constraint failed');
-  }
-}

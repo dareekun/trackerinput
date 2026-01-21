@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Aplikasi memerlukan Face ID untuk membuka kunci.</string>
 </dict>
 </plist>

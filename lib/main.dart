@@ -1,37 +1,23 @@
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'router/app_router.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_web_plugins/url_strategy.dart';
+import 'data/db/factory_stub.dart'
+  if (dart.library.html) 'data/db/factory_web.dart'
+  if (dart.library.ffi)  'data/db/factory_desktop.dart';
 
-import 'package:sqflite/sqflite.dart';
-
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
-
-import 'pages/login_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // *** PENTING: Inisialisasi factory sebelum ada kode yang menyentuh DB ***
+  await initDbFactory();
 
   if (kIsWeb) {
-    // WEB: pakai adapter web (IndexedDB)
-    databaseFactory = databaseFactoryFfiWeb;
-  } else {
-    try {
-      sqfliteFfiInit(); 
-      if (!await _isMobile()) {
-        databaseFactory = databaseFactoryFfi;
-      }
-    } catch (_) {
-      
-    }
+    usePathUrlStrategy();
   }
 
   runApp(const MyApp());
-}
-
-Future<bool> _isMobile() async {
-  return false;
 }
 
 class MyApp extends StatelessWidget {
@@ -39,14 +25,20 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Auth SQLite Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
-      ),
-      home: const LoginPage(),
+    final theme = ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6B77E8), brightness: Brightness.light),
+      useMaterial3: true,
+      inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+    );
+
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: 'Input Tracker',
+      theme: theme,
+      routerConfig: AppRouter.router,
     );
   }
 }
+
+
+
