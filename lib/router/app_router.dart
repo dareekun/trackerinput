@@ -18,33 +18,33 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: '/splash',
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
-      GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
+      GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+      GoRoute(path: '/splash', builder: (_, _) => const SplashPage()),
 
       // Shell dengan sidebar yang selalu ada
       StatefulShellRoute.indexedStack(
         builder: (context, state, navShell) => DashboardShell(navShell: navShell),
         branches: [
           StatefulShellBranch(routes: [
-            GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
+            GoRoute(path: '/dashboard', builder: (_, _) => const DashboardPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/account', builder: (_, __) => const AccountPage()),
+            GoRoute(path: '/account', builder: (_, _) => const AccountPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/insertdata', builder: (_, __) => const InsertDataPage()),
+            GoRoute(path: '/insertdata', builder: (_, _) => const InsertDataPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/data', builder: (_, __) => const DataPage()),
+            GoRoute(path: '/data', builder: (_, _) => const DataPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/chat', builder: (_, __) => const ChatPage()),
+            GoRoute(path: '/chat', builder: (_, _) => const ChatPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/app', builder: (_, __) => const AppToolsPage()),
+            GoRoute(path: '/app', builder: (_, _) => const AppToolsPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/changepassword', builder: (_, __) => const ChangePasswordPage()),
+            GoRoute(path: '/changepassword', builder: (_, _) => const ChangePasswordPage()),
           ]),
         ],
       ),

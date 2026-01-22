@@ -3,9 +3,19 @@ import 'package:flutter/material.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
+  
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Chat'));
+    // Mendapatkan ukuran layar/window
+    Size size = MediaQuery.of(context).size;
+    double width = size.width;
+    double height = size.height;
+
+    return Scaffold(
+      body: Center(
+        child: Text("Ukuran Window: ${width.toInt()} x ${height.toInt()}"),
+      ),
+    );
   }
 }

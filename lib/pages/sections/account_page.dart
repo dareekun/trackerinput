@@ -5,9 +5,9 @@ class AccountPage extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-  String? _email;
+  String? email0;
 
-    final email = _email ?? '-';
+    final email = email0 ?? '-';
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
       body: ListView(

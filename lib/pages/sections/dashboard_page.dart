@@ -17,10 +17,6 @@ class _DashboardPageState extends State<DashboardPage> {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-          Text('Overview', 
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)
-          ),
-          const SizedBox(height: 12),
           Wrap(
             spacing: 12, runSpacing: 12,
             children: const [
