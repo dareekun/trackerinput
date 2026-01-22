@@ -1,7 +1,14 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../data/session/session_manager.dart';
+// Ganti dengan path session_manager Anda yang sebenarnya
+// import '../../data/session/session_manager.dart';
+
+/// Model sederhana untuk menu agar mudah dikelola
+class NavItem {
+  final IconData icon;
+  final String label;
+  const NavItem(this.icon, this.label);
+}
 
 class DashboardShell extends StatefulWidget {
   final StatefulNavigationShell navShell;
@@ -14,6 +21,16 @@ class DashboardShell extends StatefulWidget {
 class _DashboardShellState extends State<DashboardShell> {
   String? _email;
 
+  // DAFTAR MENU: Urutan di sini HARUS sama dengan urutan branch di GoRouter Anda
+  final List<NavItem> _menuItems = const [
+    NavItem(Icons.dashboard_outlined, 'Dashboard'),
+    NavItem(Icons.edit_outlined, 'Insert Data'),
+    NavItem(Icons.article_outlined, 'Data List'),
+    NavItem(Icons.history, 'History'),
+    NavItem(Icons.apps_outlined, 'Applications'),
+    NavItem(Icons.account_circle_outlined, 'Account'),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -21,9 +38,11 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   Future<void> _loadUser() async {
-    final email = await SessionManager.getCurrentUser();
+    // Simulasi ambil data session
+    // final email = await SessionManager.getCurrentUser();
+    const email = "user@example.com"; 
     if (!mounted) return;
-    setState(() => _email = email ?? 'User');
+    setState(() => _email = email);
   }
 
   Future<void> _logout() async {
@@ -39,57 +58,51 @@ class _DashboardShellState extends State<DashboardShell> {
       ),
     );
     if (confirm != true) return;
-
-    await SessionManager.clear();
+    // await SessionManager.clear();
     if (!mounted) return;
-    context.go('/login'); // arahkan ke login tanpa menumpuk stack
+    context.go('/login');
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isWide = MediaQuery.of(context).size.width >= 1100;
-
-    final sidebar = _Sidebar(
-      currentIndex: widget.navShell.currentIndex,
-      onSelect: (i) {
-        // Pindah branch tanpa reset stack internal
-        widget.navShell.goBranch(i);
-      },
-      onLogout: _logout,
-    );
+    
+    // MENDAPATKAN JUDUL AKTIF: Berdasarkan index branch go_router yang sedang terbuka
+    final activeItem = _menuItems[widget.navShell.currentIndex];
 
     return Scaffold(
-      // AppBar minimal hanya untuk mobile/tablet
-      appBar: isWide ? null : AppBar(
-        title: const Text('Dashboard'),
-      ),
-      drawer: isWide ? null : Drawer(child: sidebar),
+      appBar: isWide ? null : AppBar(title: Text(activeItem.label)),
+      drawer: isWide ? null : Drawer(child: _buildSidebar(context)),
       body: Row(
         children: [
           if (isWide)
             Container(
-              width: 240,
+              width: 260,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  right: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-                ),
+                color: cs.surface,
+                border: Border(right: BorderSide(color: cs.outlineVariant)),
               ),
-              child: SafeArea(child: sidebar),
+              child: SafeArea(child: _buildSidebar(context)),
             ),
-          // Konten halaman dinamis
           Expanded(
             child: Column(
               children: [
-                _HeaderBar(email: _email ?? 'User'),
-                const SizedBox(height: 12),
+                // Header Bar dengan Judul Dinamis
+                _HeaderBar(
+                  title: activeItem.label, 
+                  email: _email ?? 'User',
+                ),
                 Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
-                    child: Container(
-                      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-                      child: SafeArea(top: false, child: widget.navShell),
+                  child: Container(
+                    margin: const EdgeInsets.all(12),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
                     ),
+                    child: widget.navShell,
                   ),
                 ),
               ],
@@ -99,145 +112,80 @@ class _DashboardShellState extends State<DashboardShell> {
       ),
     );
   }
-}
 
-/* ------------------------------- Sidebar -------------------------------- */
-
-class _Sidebar extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onSelect;
-  final VoidCallback onLogout;
-
-  const _Sidebar({
-    required this.currentIndex,
-    required this.onSelect,
-    required this.onLogout,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final items = const [
-      (_IconLabel(Icons.dashboard_outlined, 'Dashboard'), '/dashboard'),
-      (_IconLabel(Icons.edit_outlined, 'insert Data'), '/insertdata'),
-      (_IconLabel(Icons.article_outlined, 'Data'), '/data'),
-      (_IconLabel(Icons.chat_bubble_outline, 'Chat'), '/chat'),
-      (_IconLabel(Icons.apps_outlined, 'App'), '/app'),
-      (_IconLabel(Icons.account_circle_outlined, 'Account'), '/account'),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Icon(Icons.menu, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text('Menu', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-              ],
-            ),
+  // Fungsi Sidebar yang terintegrasi
+  Widget _buildSidebar(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        const ListTile(
+          leading: Icon(Icons.menu_open, size: 28),
+          title: Text("MAIN MENU", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        ),
+        const Divider(),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _menuItems.length,
+            itemBuilder: (context, index) {
+              final item = _menuItems[index];
+              final isSelected = widget.navShell.currentIndex == index;
+              return ListTile(
+                selected: isSelected,
+                leading: Icon(isSelected ? item.icon : item.icon), // Bisa ganti icon jika aktif
+                title: Text(item.label),
+                onTap: () {
+                  widget.navShell.goBranch(index);
+                  if (MediaQuery.of(context).size.width < 1100) Navigator.pop(context);
+                },
+              );
+            },
           ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final selected = i == currentIndex;
-                return _SidebarTile(
-                  icon: items[i].$1.icon,
-                  label: items[i].$1.label,
-                  selected: selected,
-                  onTap: () => onSelect(i),
-                );
-              },
-            ),
+        ),
+        const Divider(),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+            onPressed: _logout,
+            icon: const Icon(Icons.logout),
+            label: const Text("Sign Out"),
           ),
-          const Divider(),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                icon: const Icon(Icons.logout),
-                label: const Text('Sign Out'),
-                onPressed: onLogout,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
-
-class _IconLabel {
-  final IconData icon;
-  final String label;
-  const _IconLabel(this.icon, this.label);
-}
-
-class _SidebarTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _SidebarTile({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? cs.primaryContainer.withOpacity(0.45) : Colors.transparent,
-      child: ListTile(
-        leading: Icon(icon, color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant),
-        title: Text(label, style: TextStyle(color: selected ? cs.onPrimaryContainer : cs.onSurface)),
-        onTap: onTap,
-      ),
-    );
-  }
-}
-
-/* -------------------------------- Header -------------------------------- */
 
 class _HeaderBar extends StatelessWidget {
+  final String title;
   final String email;
-  const _HeaderBar({required this.email});
+  const _HeaderBar({required this.title, required this.email});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      color: cs.surface,
       child: Row(
         children: [
-          Text('Dashboard', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          // TULISAN INI BERUBAH OTOMATIS
+          Text(
+            title, 
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)
+          ),
           const Spacer(),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => context.go('/account'),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: cs.outlineVariant),
+            ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: cs.primary,
-                  child: const Icon(Icons.person, color: Colors.white, size: 18),
-                ),
+                CircleAvatar(radius: 14, backgroundColor: cs.primary, child: const Icon(Icons.person, size: 16, color: Colors.white)),
                 const SizedBox(width: 8),
-                Text(email, style: TextStyle(color: cs.onSurface)),
+                Text(email, style: const TextStyle(fontWeight: FontWeight.w500)),
               ],
             ),
           ),

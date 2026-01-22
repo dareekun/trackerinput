@@ -9,7 +9,7 @@ import '../pages/sections/account_page.dart';
 import '../pages/sections/change_password_page.dart';
 import '../pages/sections/insert_data_page.dart';
 import '../pages/sections/data_page.dart';
-import '../pages/sections/chat_page.dart';
+import '../pages/sections/history_page.dart';
 import '../pages/sections/app_tools_page.dart';
 
 class AppRouter {
@@ -29,19 +29,19 @@ class AppRouter {
             GoRoute(path: '/dashboard', builder: (_, _) => const DashboardPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/account', builder: (_, _) => const AccountPage()),
-          ]),
-          StatefulShellBranch(routes: [
             GoRoute(path: '/insertdata', builder: (_, _) => const InsertDataPage()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/data', builder: (_, _) => const DataPage()),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/chat', builder: (_, _) => const ChatPage()),
+            GoRoute(path: '/history', builder: (_, _) => const HistoryPage()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/app', builder: (_, _) => const AppToolsPage()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/account', builder: (_, _) => const AccountPage()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/changepassword', builder: (_, _) => const ChangePasswordPage()),

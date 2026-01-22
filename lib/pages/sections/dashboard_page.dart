@@ -17,8 +17,13 @@ class _DashboardPageState extends State<DashboardPage> {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-          Wrap(
-            spacing: 12, runSpacing: 12,
+          GridView.count(
+            shrinkWrap: true, // Agar GridView bisa berada di dalam ListView
+            physics: const NeverScrollableScrollPhysics(), // Agar scroll mengikuti ListView utama
+            crossAxisCount: 4, // Membuat 4 kolom (agar penuh menyamping)
+            crossAxisSpacing: 16, // Jarak antar kartu secara horizontal
+            mainAxisSpacing: 16, // Jarak antar kartu secara vertikal
+            childAspectRatio: 2.2, // SESUAIKAN INI: Semakin besar angkanya, kartu semakin pendek/gepeng
             children: const [
               _StatCard(label: 'Item Registered', value: '538'),
               _StatCard(label: 'Quota', value: '485'),
@@ -31,9 +36,10 @@ class _DashboardPageState extends State<DashboardPage> {
           // BAGIAN KALENDER
           _PaneCard(
             title: 'Schedule & Activity',
-            child: Column(
-              children: [
-                CalendarDatePicker(
+            child: SizedBox(
+              height: 400, // Tentukan tinggi yang diinginkan
+              width: 1100,  // Tentukan lebar yang diinginkan
+                child:  CalendarDatePicker(
                   initialDate: _selectedDate,
                   firstDate: DateTime(2020),
                   lastDate: DateTime(2030),
@@ -43,19 +49,14 @@ class _DashboardPageState extends State<DashboardPage> {
                     });
                     // Anda bisa menambahkan aksi lain di sini, misal: munculkan snackbar
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Tanggal dipilih: ${newDate.day}/${newDate.month}/${newDate.year}'), duration: const Duration(milliseconds: 500),)
+                      SnackBar(
+                        content: Text('Tanggal dipilih: ${newDate.day}/${newDate.month}/${newDate.year}'), 
+                      duration: const Duration(milliseconds: 500),
+                      behavior: SnackBarBehavior.floating,
+                      )
                     );
                   },
                 ),
-                const Divider(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    "Agenda untuk: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}",
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
