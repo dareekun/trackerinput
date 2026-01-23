@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 // Ganti dengan path session_manager Anda yang sebenarnya
-// import '../../data/session/session_manager.dart';
+import '../../data/session/session_manager.dart';
 
 /// Model sederhana untuk menu agar mudah dikelola
 class NavItem {
@@ -24,10 +24,10 @@ class _DashboardShellState extends State<DashboardShell> {
   // DAFTAR MENU: Urutan di sini HARUS sama dengan urutan branch di GoRouter Anda
   final List<NavItem> _menuItems = const [
     NavItem(Icons.dashboard_outlined, 'Dashboard'),
-    NavItem(Icons.edit_outlined, 'Insert Data'),
+    NavItem(Icons.edit_outlined, 'Register Item'),
     NavItem(Icons.article_outlined, 'Data List'),
+    NavItem(Icons.apps_outlined, 'Add Data'),
     NavItem(Icons.history, 'History'),
-    NavItem(Icons.apps_outlined, 'Applications'),
     NavItem(Icons.account_circle_outlined, 'Account'),
   ];
 
@@ -37,12 +37,21 @@ class _DashboardShellState extends State<DashboardShell> {
     _loadUser();
   }
 
-  Future<void> _loadUser() async {
-    // Simulasi ambil data session
-    // final email = await SessionManager.getCurrentUser();
-    const email = "user@example.com"; 
-    if (!mounted) return;
-    setState(() => _email = email);
+Future<void> _loadUser() async {
+    try {
+      // 1. Ambil email asli dari SessionManager
+      final email = await SessionManager.getCurrentUser();
+      
+      if (!mounted) return;
+
+      // 2. Jika email ditemukan, update state. Jika tidak (null), beri fallback.
+      setState(() {
+        _email = email ?? "Guest User"; 
+      });
+    } catch (e) {
+      debugPrint("Gagal memuat session: $e");
+      setState(() => _email = "Error User");
+    }
   }
 
   Future<void> _logout() async {
@@ -50,16 +59,29 @@ class _DashboardShellState extends State<DashboardShell> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi'),
-        content: const Text('Yakin ingin keluar?'),
+        content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Keluar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false), 
+            child: const Text('Batal')
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Keluar')
+          ),
         ],
       ),
     );
+
     if (confirm != true) return;
-    // await SessionManager.clear();
+
+    // 3. Hapus data session di storage
+    await SessionManager.clear();
+
     if (!mounted) return;
+
+    // 4. Arahkan kembali ke login dan hapus stack navigasi
     context.go('/login');
   }
 

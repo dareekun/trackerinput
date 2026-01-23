@@ -23,12 +23,12 @@ Future<void> main() async {
     await windowManager.ensureInitialized();
 
     WindowOptions windowOptions = const WindowOptions(
-      size: Size(1280, 740), // Ukuran default saat dibuka
+      size: Size(1280, 770), // Ukuran default saat dibuka
       center: true,          // Menaruh jendela di tengah layar
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.normal,
-      minimumSize: Size(1280, 740), // Ukuran minimal yang diperbolehkan
+      minimumSize: Size(1280, 770), // Ukuran minimal yang diperbolehkan
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {

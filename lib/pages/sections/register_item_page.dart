@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../data/db/app_db.dart';
 
-class InsertDataPage extends StatefulWidget {
-  const InsertDataPage({super.key});
+class RegisterItemPage extends StatefulWidget {
+  const RegisterItemPage({super.key});
 
   @override
-  State<InsertDataPage> createState() => _InsertDataPageState();
+  State<RegisterItemPage> createState() => _RegisterItemPageState();
 }
 
-class _InsertDataPageState extends State<InsertDataPage> {
+class _RegisterItemPageState extends State<RegisterItemPage> {
   final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
   final _descController = TextEditingController();
@@ -103,7 +103,7 @@ class _InsertDataPageState extends State<InsertDataPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Insert New Item", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text("Register New Item", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               
               TextFormField(
