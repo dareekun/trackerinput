@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-// Ganti dengan path session_manager Anda yang sebenarnya
 import '../../data/session/session_manager.dart';
+import '../../data/services/notification_service.dart';
+import '../data/db/app_db.dart';
 
-/// Model sederhana untuk menu agar mudah dikelola
 class NavItem {
   final IconData icon;
   final String label;
@@ -20,8 +20,8 @@ class DashboardShell extends StatefulWidget {
 
 class _DashboardShellState extends State<DashboardShell> {
   String? _email;
+  int _reminderCount = 0; // Variable didefinisikan di sini
 
-  // DAFTAR MENU: Urutan di sini HARUS sama dengan urutan branch di GoRouter Anda
   final List<NavItem> _menuItems = const [
     NavItem(Icons.dashboard_outlined, 'Dashboard'),
     NavItem(Icons.edit_outlined, 'Register Item'),
@@ -35,22 +35,33 @@ class _DashboardShellState extends State<DashboardShell> {
   void initState() {
     super.initState();
     _loadUser();
+    _refreshNotification();
   }
 
-Future<void> _loadUser() async {
+  Future<void> _loadUser() async {
     try {
-      // 1. Ambil email asli dari SessionManager
       final email = await SessionManager.getCurrentUser();
-      
       if (!mounted) return;
-
-      // 2. Jika email ditemukan, update state. Jika tidak (null), beri fallback.
       setState(() {
-        _email = email ?? "Guest User"; 
+        _email = email ?? "Guest User";
       });
     } catch (e) {
       debugPrint("Gagal memuat session: $e");
       setState(() => _email = "Error User");
+    }
+  }
+
+  Future<void> _refreshNotification() async {
+    try {
+      final db = await AppDb.instance.database;
+      final count = await NotificationService.getLimitReminderCount(db);
+
+      if (!mounted) return;
+      setState(() {
+        _reminderCount = count;
+      });
+    } catch (e) {
+      debugPrint("Gagal update lonceng: $e");
     }
   }
 
@@ -62,26 +73,21 @@ Future<void> _loadUser() async {
         content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false), 
-            child: const Text('Batal')
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Keluar')
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar'),
           ),
         ],
       ),
     );
 
     if (confirm != true) return;
-
-    // 3. Hapus data session di storage
     await SessionManager.clear();
-
     if (!mounted) return;
-
-    // 4. Arahkan kembali ke login dan hapus stack navigasi
     context.go('/login');
   }
 
@@ -89,60 +95,70 @@ Future<void> _loadUser() async {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isWide = MediaQuery.of(context).size.width >= 1100;
-    
-    // MENDAPATKAN JUDUL AKTIF: Berdasarkan index branch go_router yang sedang terbuka
     final activeItem = _menuItems[widget.navShell.currentIndex];
 
-    return Scaffold(
-      appBar: isWide ? null : AppBar(title: Text(activeItem.label)),
-      drawer: isWide ? null : Drawer(child: _buildSidebar(context)),
-      body: Row(
-        children: [
-          if (isWide)
-            Container(
-              width: 260,
-              decoration: BoxDecoration(
-                color: cs.surface,
-                border: Border(right: BorderSide(color: cs.outlineVariant)),
+    return Listener(
+      onPointerDown: (_) {
+        // Setiap kali layar disentuh, reset timer!
+        SessionManager.startTimeoutTimer();
+        // Update juga di DB (opsional, jangan terlalu sering agar tidak berat)
+      },
+      child: Scaffold(
+        appBar: isWide ? null : AppBar(title: Text(activeItem.label)),
+        drawer: isWide ? null : Drawer(child: _buildSidebar(context)),
+        body: Row(
+          children: [
+            if (isWide)
+              Container(
+                width: 260,
+                decoration: BoxDecoration(
+                  color: cs.surface,
+                  border: Border(right: BorderSide(color: cs.outlineVariant)),
+                ),
+                child: SafeArea(child: _buildSidebar(context)),
               ),
-              child: SafeArea(child: _buildSidebar(context)),
-            ),
-          Expanded(
-            child: Column(
-              children: [
-                // Header Bar dengan Judul Dinamis
-                _HeaderBar(
-                  title: activeItem.label, 
-                  email: _email ?? 'User',
-                ),
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.all(12),
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
-                    ),
-                    child: widget.navShell,
+            Expanded(
+              child: Column(
+                children: [
+                  // PERBAIKAN: Melemparkan variable _reminderCount ke _HeaderBar
+                  _HeaderBar(
+                    title: activeItem.label,
+                    email: _email ?? 'User',
+                    reminderCount: _reminderCount,
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.all(12),
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: cs.outlineVariant.withOpacity(0.5),
+                        ),
+                      ),
+                      child: widget.navShell,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // Fungsi Sidebar yang terintegrasi
   Widget _buildSidebar(BuildContext context) {
     return Column(
       children: [
         const SizedBox(height: 20),
         const ListTile(
           leading: Icon(Icons.menu_open, size: 28),
-          title: Text("MAIN MENU", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          title: Text(
+            "MAIN MENU",
+            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+          ),
         ),
         const Divider(),
         Expanded(
@@ -153,11 +169,13 @@ Future<void> _loadUser() async {
               final isSelected = widget.navShell.currentIndex == index;
               return ListTile(
                 selected: isSelected,
-                leading: Icon(isSelected ? item.icon : item.icon), // Bisa ganti icon jika aktif
+                leading: Icon(item.icon),
                 title: Text(item.label),
                 onTap: () {
                   widget.navShell.goBranch(index);
-                  if (MediaQuery.of(context).size.width < 1100) Navigator.pop(context);
+                  if (MediaQuery.of(context).size.width < 1100) {
+                    Navigator.pop(context);
+                  }
                 },
               );
             },
@@ -167,7 +185,9 @@ Future<void> _loadUser() async {
         Padding(
           padding: const EdgeInsets.all(16),
           child: FilledButton.icon(
-            style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 50),
+            ),
             onPressed: _logout,
             icon: const Icon(Icons.logout),
             label: const Text("Sign Out"),
@@ -181,7 +201,13 @@ Future<void> _loadUser() async {
 class _HeaderBar extends StatelessWidget {
   final String title;
   final String email;
-  const _HeaderBar({required this.title, required this.email});
+  final int reminderCount; // Tambahkan parameter di sini
+
+  const _HeaderBar({
+    required this.title,
+    required this.email,
+    required this.reminderCount, // Wajib diisi
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -191,12 +217,36 @@ class _HeaderBar extends StatelessWidget {
       color: cs.surface,
       child: Row(
         children: [
-          // TULISAN INI BERUBAH OTOMATIS
           Text(
-            title, 
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const Spacer(),
+
+          // PERBAIKAN: Menampilkan Badge hanya jika reminderCount > 0
+          IconButton(
+            onPressed: () {
+              context.push('/reminder');
+            },
+            icon: reminderCount > 0
+                ? Badge(
+                    label: Text(
+                      reminderCount.toString(),
+                    ), // Convert int ke String
+                    child: Icon(
+                      Icons.notifications_outlined,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  )
+                : Icon(
+                    Icons.notifications_outlined,
+                    color: cs.onSurfaceVariant,
+                  ),
+          ),
+
+          const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -205,9 +255,20 @@ class _HeaderBar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                CircleAvatar(radius: 14, backgroundColor: cs.primary, child: const Icon(Icons.person, size: 16, color: Colors.white)),
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: cs.primary,
+                  child: const Icon(
+                    Icons.person,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Text(email, style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  email,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),

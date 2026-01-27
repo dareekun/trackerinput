@@ -132,7 +132,7 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               // Bagian Reminder
               Card(
                 elevation: 0,
-                color: cs.surfaceVariant.withOpacity(0.3),
+                color: cs.surfaceContainerHighest.withOpacity(0.3),
                 child: Column(
                   children: [
                     SwitchListTile(

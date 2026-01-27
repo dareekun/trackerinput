@@ -21,6 +21,10 @@ dependencies:
   shared_preferences: ^2.2.3
   local_auth: ^2.3.0
   window_manager: ^0.5.1
+  flutter_launcher_icons: ^0.14.4
+  excel: ^4.0.6
+  path_provider: ^2.1.5
+  open_file_plus: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -28,6 +32,14 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
-
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  windwos: true
+  image_path: "assets/images/icon.png" # Path ke gambar Anda
+  min_sdk_android: 21 # Opsional
+  adaptive_icon_background: "#ffffff" # Warna background (untuk Android Adaptive Icon)
+  adaptive_icon_foreground: "assets/images/icon.png" # Gambar foreground
 

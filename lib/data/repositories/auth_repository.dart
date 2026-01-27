@@ -10,6 +10,7 @@ class AuthRepository {
   Future<Database> get _db async => AppDb.instance.database;
 
   Future<bool> register({
+    required String name,
     required String email,
     required String password,
     String? recoveryQuestion,
@@ -29,6 +30,7 @@ class AuthRepository {
 
     try {
       await db.insert('users', {
+        'name': name.trim(), // Pastikan kolom 'name' sudah ada di tabel users
         'email': email.trim().toLowerCase(),
         'password_hash': passwordHash,
         'salt': salt,

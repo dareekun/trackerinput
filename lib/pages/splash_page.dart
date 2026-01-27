@@ -1,8 +1,7 @@
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
-
+import '../../data/db/app_db.dart'; // Import AppDb
 import '../../data/session/session_manager.dart';
 
 class SplashPage extends StatefulWidget {
@@ -22,6 +21,16 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _decide() async {
+    // 1. CEK APAKAH ADA USER TERDAFTAR DI DATABASE
+    final bool isUserExists = await AppDb.instance.hasAnyUser();
+
+    if (!isUserExists) {
+      // Jika database kosong, paksa registrasi (First run)
+      _goRoute('/register');
+      return;
+    }
+
+    // 2. JIKA ADA USER, LANJUT CEK STATUS LOGIN & BIOMETRIK
     final current = await SessionManager.getCurrentUser();
     final bioEnabled = await SessionManager.isBiometricEnabled();
     final bioUser = await SessionManager.getBiometricUser();
@@ -49,14 +58,16 @@ class _SplashPageState extends State<SplashPage> {
             return;
           }
         }
+        // Gagal autentikasi biometrik, arahkan ke login manual
         _goRoute('/login');
         return;
       }
-
-      // Tidak supported tapi status aktif → nonaktifkan agar tidak mentok
+      
+      // Jika biometric di-set aktif tapi device tidak support lagi
       await SessionManager.setBiometricEnabled(false);
     }
 
+    // 3. LOGIKA NORMAL (Jika biometrik tidak aktif)
     if (current != null) {
       _goRoute('/dashboard');
     } else {
@@ -81,14 +92,22 @@ class _SplashPageState extends State<SplashPage> {
 
   void _goRoute(String route) {
     if (!mounted) return;
-    // go_router: ganti seluruh location; memastikan shell aktif dan sidebar tetap
     context.go(route);
   }
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text("Menyiapkan aplikasi...", style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      ),
     );
   }
 }

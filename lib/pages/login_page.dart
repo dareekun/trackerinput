@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart'; // <— Tambah ini
 
 import '../../data/repositories/auth_repository.dart';
 import '../../data/session/session_manager.dart';
-import 'register_page.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -71,9 +70,6 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       if (ok) {
         await SessionManager.setCurrentUser(_emailCtl.text);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Selamat datang, ${_emailCtl.text.trim()}')),
-        );
         // === PENTING: arahkan ke rute shell, bukan dorong widget ===
         context.go('/dashboard');
       } else {
@@ -210,18 +206,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Belum punya akun?'),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterPage()));
-                            },
-                            child: const Text('Daftar'),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),

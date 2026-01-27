@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../pages/login_page.dart';
 import '../pages/splash_page.dart';
+import '../pages/register_page.dart';
 import '../pages/dashboard_shell.dart';
 
 import '../pages/sections/dashboard_page.dart';
@@ -12,6 +13,7 @@ import '../pages/sections/data_page.dart';
 import '../pages/sections/history_page.dart';
 import '../pages/sections/add_data_page.dart';
 import '../pages/sections/update_data_page.dart';
+import '../pages/sections/reminder_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -21,6 +23,7 @@ class AppRouter {
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/splash', builder: (_, _) => const SplashPage()),
+      GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
 
       // Shell dengan sidebar yang selalu ada
       StatefulShellRoute.indexedStack(
@@ -46,6 +49,9 @@ class AppRouter {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/changepassword', builder: (_, _) => const ChangePasswordPage()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/reminder', builder: (_, _) => const ReminderPage()),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(path: '/update', builder: (context, state) {

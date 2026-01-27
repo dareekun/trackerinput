@@ -19,10 +19,8 @@ class AppDb {
     
     return await openDatabase(
       path,
-      // Versi dinaikkan ke 2 untuk memicu pembuatan tabel baru pada DB yang sudah ada
-      version: 2, 
+      version: 1, 
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
     );
   }
 
@@ -33,12 +31,14 @@ class AppDb {
       CREATE TABLE users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         salt TEXT NOT NULL,
         recovery_question TEXT,
         recovery_answer_hash TEXT,
         recovery_salt TEXT,
-        created_at TEXT
+        created_at TEXT,
+        last_activity TEXT
       )
     ''');
     await db.execute('CREATE INDEX idx_users_email ON users(email)');
@@ -56,20 +56,7 @@ class AppDb {
       )
     ''');
 
-    // Tabel Transactions (Menyelesaikan error "no such table")
-    await _createTransactionsTable(db);
-  }
-
-  // Dijalankan jika database sudah ada tapi versinya lebih rendah (Migrasi)
-  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      // Jika user update dari versi 1 ke 2, buat tabel transaksi yang belum ada
-      await _createTransactionsTable(db);
-    }
-  }
-
-  // Helper untuk membuat tabel transaksi agar kode tetap rapi
-  Future<void> _createTransactionsTable(Database db) async {
+    // Tabel Transaction
     await db.execute('''
       CREATE TABLE transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,6 +83,25 @@ class AppDb {
     return result.isNotEmpty;
   }
 
+  // Di dalam class AppDb (app_db.dart)
+  Future<bool> hasAnyUser() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery('SELECT COUNT(*) as total FROM users');
+    int? count = Sqflite.firstIntValue(result);
+    return (count ?? 0) > 0;
+  }
+
+  // Tambahkan fungsi untuk update aktivitas
+  Future<void> updateLastActivity(String email) async {
+    final db = await database;
+    await db.update(
+      'users',
+      {'last_activity': DateTime.now().toIso8601String()},
+      where: 'email = ?',
+      whereArgs: [email.trim().toLowerCase()],
+    );
+  }
+  
   Future<int> deleteItem(int id) async {
     final db = await database;
     return await db.delete(
@@ -128,6 +134,24 @@ class AppDb {
     return await db.query('items', orderBy: 'id DESC');
   }
 
+  // Fungsi untuk mengambil data user lengkap berdasarkan email
+  Future<Map<String, dynamic>?> getUserData(String email) async {
+    final db = await database;
+    final results = await db.query('users', where: 'email = ?', whereArgs: [email]);
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  // Fungsi untuk update nama
+  Future<int> updateUserName(String email, String newName) async {
+    final db = await database;
+    return await db.update(
+      'users',
+      {'name': newName}, // Pastikan kolom 'name' sudah ada di tabel users
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+  }
+
   /* ----------------------- CRUD TRANSACTIONS ----------------------- */
 
   Future<int> insertTransaction(Map<String, dynamic> row) async {
@@ -140,7 +164,7 @@ class AppDb {
     final db = await database;
     // Kita melakukan JOIN agar mendapatkan kolom description dari tabel items
     return await db.rawQuery('''
-      SELECT t.*, i.description 
+      SELECT t.*, i.description, i.limit_value
       FROM transactions t
       LEFT JOIN items i ON t.item_id = i.id
       ORDER BY t.date DESC, t.id DESC
