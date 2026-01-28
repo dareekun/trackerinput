@@ -70,7 +70,7 @@ class HistoryService {
     );
 
     // --- SHEET 0: REGISTERED ITEMS (Sheet Paling Depan) ---
-    List<String> itemHeaders = ["No", "Item Code", "Item Name", "Initial Limit", "Unit", "Description"];
+    List<String> itemHeaders = ["No", "Item Code", "Item Description", "Quota", "Unit"];
     for (var i = 0; i < itemHeaders.length; i++) {
       var cell = sheetItem.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
       cell.value = TextCellValue(itemHeaders[i]);
@@ -85,10 +85,9 @@ class HistoryService {
       List<CellValue> values = [
         IntCellValue(i + 1),
         TextCellValue(item['code'].toString()),
-        TextCellValue(item['name'].toString()),
-        DoubleCellValue(double.tryParse(item['quota'].toString()) ?? 0.0),
-        TextCellValue(item['unit'] ?? "-"),
         TextCellValue(item['description'] ?? "-"),
+        DoubleCellValue(double.tryParse(item['limit_value'].toString()) ?? 0.0),
+        TextCellValue(item['uom'] ?? "-"),
       ];
       for (int col = 0; col < values.length; col++) {
         var cell = sheetItem.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: i + 1));
@@ -99,7 +98,7 @@ class HistoryService {
     _autoFitColumnWidth(sheetItem, itemHeaders.length, dbItems.length + 1);
 
     // --- SHEET 1: HISTORY DATA ---
-    List<String> headers = ["No", "Item Code", "Description", "Value", "Date"];
+    List<String> headers = ["No", "Item Code", "Description", "Usage", "Date"];
     for (var i = 0; i < headers.length; i++) {
       var cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
       cell.value = TextCellValue(headers[i]);
@@ -128,7 +127,7 @@ class HistoryService {
     DateTime now = DateTime.now();
     int daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     List<String> dateHeaders = List.generate(daysInMonth, (i) => (i + 1).toString());
-    List<String> matrixHeaders = ["Item Code", "Initial Limit", ...dateHeaders, "Total Used", "Remaining"];
+    List<String> matrixHeaders = ["Item Code", "Quota", ...dateHeaders, "Quota Used", "Remaining"];
     
     for (var i = 0; i < matrixHeaders.length; i++) {
       var cell = sheet2.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));

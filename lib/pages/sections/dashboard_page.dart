@@ -110,7 +110,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           child: LinearProgressIndicator(
                             value: _totalQuota == 0 ? 0 : (_consumedQuota / _totalQuota),
                             minHeight: 12,
-                            backgroundColor: cs.surfaceVariant,
+                            backgroundColor: cs.surfaceContainerHighest,
                             color: _remainingQuota <= 0 ? Colors.red : cs.primary,
                           ),
                         ),

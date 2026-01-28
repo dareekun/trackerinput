@@ -220,8 +220,9 @@ class _RegisterPageState extends State<RegisterPage> {
               validator: (v) {
                 final s = (v ?? '').trim();
                 if (s.isEmpty) return 'Email wajib diisi';
-                if (!RegExp(r'^[\w\.\-]+@[\w\.\-]+\.\w+$').hasMatch(s))
+                if (!RegExp(r'^[\w\.\-]+@[\w\.\-]+\.\w+$').hasMatch(s)) {
                   return 'Format tidak valid';
+                }
                 return null;
               },
             ),

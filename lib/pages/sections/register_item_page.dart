@@ -10,46 +10,56 @@ class RegisterItemPage extends StatefulWidget {
 }
 
 class _RegisterItemPageState extends State<RegisterItemPage> {
+  // GlobalKey untuk validasi form
   final _formKey = GlobalKey<FormState>();
+
+  // Controller untuk menangkap input dari setiap field
   final _codeController = TextEditingController();
   final _descController = TextEditingController();
   final _limitController = TextEditingController();
+  final _uomController = TextEditingController(); // Controller baru untuk UoM
   final _reminderLimitController = TextEditingController();
+  
+  // State untuk kontrol switch reminder
   bool _isReminderActive = false;
 
   @override
   void dispose() {
+    // Memastikan semua controller dihapus dari memori saat page ditutup
     _codeController.dispose();
     _descController.dispose();
     _limitController.dispose();
+    _uomController.dispose();
     _reminderLimitController.dispose();
     super.dispose();
   }
 
-  // FUNGSI UNTUK RESET FORM
+  /// Fungsi untuk mengosongkan kembali seluruh inputan di form
   void _clearForm() {
     _formKey.currentState?.reset();
     _codeController.clear();
     _descController.clear();
     _limitController.clear();
+    _uomController.clear();
     _reminderLimitController.clear();
     setState(() {
       _isReminderActive = false;
     });
   }
 
-  // FUNGSI SUBMIT DENGAN SQLITE
+  /// Fungsi untuk memproses penyimpanan data ke database SQLite
   Future<void> _submitData() async {
+    // Validasi form sebelum proses simpan
     if (_formKey.currentState!.validate()) {
       try {
         final String code = _codeController.text.trim();
 
-        // 1. VALIDASI DUPLIKASI: Cek ke SQLite
+        // 1. VALIDASI DUPLIKASI: Cek apakah kode item sudah ada di database
         bool isDuplicate = await AppDb.instance.isItemCodeExists(code);
 
         if (isDuplicate) {
           if (!mounted) return;
-          // Tampilkan peringatan jika duplikat
+          // Tampilkan snackbar jika kode sudah terdaftar
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error: Item Code "$code" sudah terdaftar!'),
@@ -57,13 +67,14 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               behavior: SnackBarBehavior.floating,
             ),
           );
-          return; // Hentikan proses simpan
+          return; 
         }
 
-        // 2. Jika tidak duplikat, lanjutkan simpan
+        // 2. Persiapan data dalam bentuk Map untuk dimasukkan ke SQLite
         final Map<String, dynamic> row = {
           'code': code,
           'description': _descController.text,
+          'unit': _uomController.text.trim(), // Data UoM yang baru ditambahkan
           'limit_value': double.tryParse(_limitController.text) ?? 0.0,
           'is_reminder': _isReminderActive ? 1 : 0,
           'reminder_limit': _isReminderActive
@@ -71,9 +82,12 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               : 0.0,
         };
 
+        // Eksekusi insert ke database
         await AppDb.instance.insertItem(row);
 
         if (!mounted) return;
+        
+        // Notifikasi sukses
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Berhasil menyimpan data ke database!'),
@@ -82,11 +96,13 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
           ),
         );
 
+        // Reset form dan beri sinyal refresh ke halaman lain
         _clearForm();
         Future.delayed(Duration.zero, () {
           RefreshNotifier.triggerRefresh();
         });
       } catch (e) {
+        // Handling error tak terduga
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
@@ -109,11 +125,12 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               Text(
                 "Register New Item",
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 24),
 
+              // Input Kode Item
               TextFormField(
                 controller: _codeController,
                 decoration: const InputDecoration(
@@ -125,6 +142,7 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               ),
               const SizedBox(height: 16),
 
+              // Input Deskripsi Item
               TextFormField(
                 controller: _descController,
                 maxLines: 2,
@@ -136,22 +154,46 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               ),
               const SizedBox(height: 16),
 
-              TextFormField(
-                controller: _limitController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Limit Value',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.summarize),
-                ),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-                onChanged: (_) => _isReminderActive
-                    ? _formKey.currentState!.validate()
-                    : null,
+              // Baris untuk Limit Value dan UoM (Kotak kecil di sebelah kanan)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Kolom Limit Value (Mengambil sisa ruang yang ada)
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _limitController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Limit Value',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.summarize),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                      onChanged: (_) => _isReminderActive
+                          ? _formKey.currentState!.validate()
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Kolom UoM (Kotak lebih kecil)
+                  Expanded(
+                    flex: 1,
+                    child: TextFormField(
+                      controller: _uomController,
+                      decoration: const InputDecoration(
+                        labelText: 'UoM',
+                        hintText: 'Kg/Pcs',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 
-              // Bagian Reminder
+              // Area pengaturan Reminder (Switch & Input)
               Card(
                 elevation: 0,
                 color: cs.surfaceContainerHighest.withOpacity(0.3),
@@ -174,11 +216,10 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
                             border: OutlineInputBorder(),
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty)
+                            if (value == null || value.isEmpty) {
                               return 'Required';
-                            double? limit = double.tryParse(
-                              _limitController.text,
-                            );
+                            }
+                            double? limit = double.tryParse(_limitController.text);
                             double? reminder = double.tryParse(value);
                             if (limit != null &&
                                 reminder != null &&
@@ -194,6 +235,7 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               ),
               const SizedBox(height: 32),
 
+              // Tombol Submit Data
               SizedBox(
                 width: double.infinity,
                 height: 50,

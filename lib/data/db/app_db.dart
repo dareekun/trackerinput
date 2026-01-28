@@ -50,6 +50,7 @@ class AppDb {
         code TEXT NOT NULL,
         description TEXT,
         limit_value REAL,
+        uom TEXT,
         is_reminder INTEGER,
         reminder_limit REAL,
         created_at TEXT
