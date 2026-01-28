@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/db/app_db.dart';
 import 'package:go_router/go_router.dart';
+import '../../data/session/refresh_notifier.dart';
 
 class UpdateDataPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -24,7 +25,9 @@ class _UpdateDataPageState extends State<UpdateDataPage> {
     super.initState();
     _codeController = TextEditingController(text: widget.item['code']);
     _descController = TextEditingController(text: widget.item['description']);
-    _limitController = TextEditingController(text: widget.item['limit_value'].toString());
+    _limitController = TextEditingController(
+      text: widget.item['limit_value'].toString(),
+    );
     _isReminderActive = widget.item['is_reminder'] == 1;
     _reminderLimitController = TextEditingController(
       text: _isReminderActive ? widget.item['reminder_limit'].toString() : '',
@@ -44,19 +47,22 @@ class _UpdateDataPageState extends State<UpdateDataPage> {
     if (_formKey.currentState!.validate()) {
       try {
         final Map<String, dynamic> updatedRow = {
-          'code': _codeController.text, // Tetap dikirim namun nilainya tidak berubah
+          'code': _codeController
+              .text, // Tetap dikirim namun nilainya tidak berubah
           'description': _descController.text,
           'limit_value': double.tryParse(_limitController.text) ?? 0.0,
           'is_reminder': _isReminderActive ? 1 : 0,
-          'reminder_limit': _isReminderActive 
-              ? (double.tryParse(_reminderLimitController.text) ?? 0.0) 
+          'reminder_limit': _isReminderActive
+              ? (double.tryParse(_reminderLimitController.text) ?? 0.0)
               : 0.0,
         };
 
         await AppDb.instance.updateItem(widget.item['id'], updatedRow);
-
+        Future.delayed(Duration.zero, () {
+          RefreshNotifier.triggerRefresh();
+        });
         if (!mounted) return;
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Data berhasil diupdate!'),
@@ -65,11 +71,13 @@ class _UpdateDataPageState extends State<UpdateDataPage> {
           ),
         );
 
-        context.pop(true); 
-        
+        context.pop(true);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal update: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Gagal update: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -104,9 +112,13 @@ class _UpdateDataPageState extends State<UpdateDataPage> {
                 readOnly: true, // MENGUNCI FIELD
                 decoration: InputDecoration(
                   labelText: 'Item Code',
-                  prefixIcon: const Icon(Icons.lock_outline, size: 20), // Ikon gembok sebagai indikator
+                  prefixIcon: const Icon(
+                    Icons.lock_outline,
+                    size: 20,
+                  ), // Ikon gembok sebagai indikator
                   filled: true,
-                  fillColor: cs.surfaceContainerHigh, // Warna berbeda untuk menandakan read-only
+                  fillColor: cs
+                      .surfaceContainerHigh, // Warna berbeda untuk menandakan read-only
                   border: const OutlineInputBorder(),
                   helperText: "Item code cannot be changed after registration.",
                 ),
@@ -160,9 +172,12 @@ class _UpdateDataPageState extends State<UpdateDataPage> {
                   children: [
                     SwitchListTile(
                       title: const Text("Activate Reminder"),
-                      secondary: const Icon(Icons.notifications_active_outlined),
+                      secondary: const Icon(
+                        Icons.notifications_active_outlined,
+                      ),
                       value: _isReminderActive,
-                      onChanged: (val) => setState(() => _isReminderActive = val),
+                      onChanged: (val) =>
+                          setState(() => _isReminderActive = val),
                     ),
                     if (_isReminderActive)
                       Padding(
@@ -180,9 +195,11 @@ class _UpdateDataPageState extends State<UpdateDataPage> {
                               if (v == null || v.isEmpty) {
                                 return 'Required when reminder is active';
                               }
-                              
+
                               // Ambil nilai dari kedua controller
-                              final double? limitValue = double.tryParse(_limitController.text);
+                              final double? limitValue = double.tryParse(
+                                _limitController.text,
+                              );
                               final double? reminderValue = double.tryParse(v);
 
                               if (limitValue != null && reminderValue != null) {
@@ -207,7 +224,10 @@ class _UpdateDataPageState extends State<UpdateDataPage> {
                 child: FilledButton.icon(
                   onPressed: _updateData,
                   icon: const Icon(Icons.save_as),
-                  label: const Text("SAVE CHANGES", style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    "SAVE CHANGES",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],

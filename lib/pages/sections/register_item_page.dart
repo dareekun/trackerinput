@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/db/app_db.dart';
+import '../../data/session/refresh_notifier.dart';
 
 class RegisterItemPage extends StatefulWidget {
   const RegisterItemPage({super.key});
@@ -39,57 +40,59 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
 
   // FUNGSI SUBMIT DENGAN SQLITE
   Future<void> _submitData() async {
-  if (_formKey.currentState!.validate()) {
-    try {
-      final String code = _codeController.text.trim();
+    if (_formKey.currentState!.validate()) {
+      try {
+        final String code = _codeController.text.trim();
 
-      // 1. VALIDASI DUPLIKASI: Cek ke SQLite
-      bool isDuplicate = await AppDb.instance.isItemCodeExists(code);
+        // 1. VALIDASI DUPLIKASI: Cek ke SQLite
+        bool isDuplicate = await AppDb.instance.isItemCodeExists(code);
 
-      if (isDuplicate) {
+        if (isDuplicate) {
+          if (!mounted) return;
+          // Tampilkan peringatan jika duplikat
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: Item Code "$code" sudah terdaftar!'),
+              backgroundColor: Colors.orange.shade800,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return; // Hentikan proses simpan
+        }
+
+        // 2. Jika tidak duplikat, lanjutkan simpan
+        final Map<String, dynamic> row = {
+          'code': code,
+          'description': _descController.text,
+          'limit_value': double.tryParse(_limitController.text) ?? 0.0,
+          'is_reminder': _isReminderActive ? 1 : 0,
+          'reminder_limit': _isReminderActive
+              ? (double.tryParse(_reminderLimitController.text) ?? 0.0)
+              : 0.0,
+        };
+
+        await AppDb.instance.insertItem(row);
+
         if (!mounted) return;
-        // Tampilkan peringatan jika duplikat
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: Item Code "$code" sudah terdaftar!'),
-            backgroundColor: Colors.orange.shade800,
+          const SnackBar(
+            content: Text('Berhasil menyimpan data ke database!'),
+            backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
         );
-        return; // Hentikan proses simpan
+
+        _clearForm();
+        Future.delayed(Duration.zero, () {
+          RefreshNotifier.triggerRefresh();
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
-
-      // 2. Jika tidak duplikat, lanjutkan simpan
-      final Map<String, dynamic> row = {
-        'code': code,
-        'description': _descController.text,
-        'limit_value': double.tryParse(_limitController.text) ?? 0.0,
-        'is_reminder': _isReminderActive ? 1 : 0,
-        'reminder_limit': _isReminderActive 
-            ? (double.tryParse(_reminderLimitController.text) ?? 0.0) 
-            : 0.0,
-      };
-
-      await AppDb.instance.insertItem(row);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Berhasil menyimpan data ke database!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
-      _clearForm();
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -103,12 +106,21 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Register New Item", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+              Text(
+                "Register New Item",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 24),
-              
+
               TextFormField(
                 controller: _codeController,
-                decoration: const InputDecoration(labelText: 'Item Code', border: OutlineInputBorder(), prefixIcon: Icon(Icons.qr_code)),
+                decoration: const InputDecoration(
+                  labelText: 'Item Code',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.qr_code),
+                ),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
@@ -116,16 +128,26 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
               TextFormField(
                 controller: _descController,
                 maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder(), prefixIcon: Icon(Icons.notes)),
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.notes),
+                ),
               ),
               const SizedBox(height: 16),
 
               TextFormField(
                 controller: _limitController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Limit Value', border: OutlineInputBorder(), prefixIcon: Icon(Icons.summarize)),
+                decoration: const InputDecoration(
+                  labelText: 'Limit Value',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.summarize),
+                ),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
-                onChanged: (_) => _isReminderActive ? _formKey.currentState!.validate() : null,
+                onChanged: (_) => _isReminderActive
+                    ? _formKey.currentState!.validate()
+                    : null,
               ),
               const SizedBox(height: 24),
 
@@ -138,7 +160,8 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
                     SwitchListTile(
                       title: const Text("Activate Reminder"),
                       value: _isReminderActive,
-                      onChanged: (val) => setState(() => _isReminderActive = val),
+                      onChanged: (val) =>
+                          setState(() => _isReminderActive = val),
                     ),
                     if (_isReminderActive)
                       Padding(
@@ -146,12 +169,20 @@ class _RegisterItemPageState extends State<RegisterItemPage> {
                         child: TextFormField(
                           controller: _reminderLimitController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Reminder Limit', border: OutlineInputBorder()),
+                          decoration: const InputDecoration(
+                            labelText: 'Reminder Limit',
+                            border: OutlineInputBorder(),
+                          ),
                           validator: (value) {
-                            if (value == null || value.isEmpty) return 'Required';
-                            double? limit = double.tryParse(_limitController.text);
+                            if (value == null || value.isEmpty)
+                              return 'Required';
+                            double? limit = double.tryParse(
+                              _limitController.text,
+                            );
                             double? reminder = double.tryParse(value);
-                            if (limit != null && reminder != null && reminder > limit) {
+                            if (limit != null &&
+                                reminder != null &&
+                                reminder > limit) {
                               return 'Cannot exceed Limit Value ($limit)';
                             }
                             return null;

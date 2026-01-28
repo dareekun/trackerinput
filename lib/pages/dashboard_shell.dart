@@ -201,17 +201,22 @@ class _DashboardShellState extends State<DashboardShell> {
 class _HeaderBar extends StatelessWidget {
   final String title;
   final String email;
-  final int reminderCount; // Tambahkan parameter di sini
+  final int reminderCount;
 
   const _HeaderBar({
     required this.title,
     required this.email,
-    required this.reminderCount, // Wajib diisi
+    required this.reminderCount,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    // 1. Logika pengecekan: Apakah judul halaman saat ini adalah 'Reminder'?
+    // Anda juga bisa menggunakan GoRouter.of(context).routeInformation.uri.path == '/reminder'
+    final bool isAtReminderPage = title.toLowerCase() == 'reminder';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       color: cs.surface,
@@ -219,34 +224,41 @@ class _HeaderBar extends StatelessWidget {
         children: [
           Text(
             title,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const Spacer(),
 
-          // PERBAIKAN: Menampilkan Badge hanya jika reminderCount > 0
+          // 2. Modifikasi IconButton
           IconButton(
-            onPressed: () {
-              context.push('/reminder');
-            },
+            // Jika di halaman reminder, onPressed diisi null (membuat tombol disable)
+            onPressed: isAtReminderPage
+                ? null 
+                : () => context.push('/reminder'),
+            
             icon: reminderCount > 0
                 ? Badge(
-                    label: Text(
-                      reminderCount.toString(),
-                    ), // Convert int ke String
+                    label: Text(reminderCount.toString()),
+                    // Beri warna pudar jika disable
                     child: Icon(
                       Icons.notifications_outlined,
-                      color: cs.onSurfaceVariant,
+                      color: isAtReminderPage 
+                          ? cs.onSurfaceVariant.withOpacity(0.3) 
+                          : cs.onSurfaceVariant,
                     ),
                   )
                 : Icon(
                     Icons.notifications_outlined,
-                    color: cs.onSurfaceVariant,
+                    color: isAtReminderPage 
+                        ? cs.onSurfaceVariant.withOpacity(0.3) 
+                        : cs.onSurfaceVariant,
                   ),
           ),
 
           const SizedBox(width: 12),
+          // ... sisa kode Container email tetap sama ...
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -258,11 +270,7 @@ class _HeaderBar extends StatelessWidget {
                 CircleAvatar(
                   radius: 14,
                   backgroundColor: cs.primary,
-                  child: const Icon(
-                    Icons.person,
-                    size: 16,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.person, size: 16, color: Colors.white),
                 ),
                 const SizedBox(width: 8),
                 Text(

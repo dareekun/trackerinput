@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../data/db/app_db.dart'; // Sesuaikan path database Anda
-import 'package:go_router/go_router.dart';
+import '../../data/session/refresh_notifier.dart';
 
 class AddDataPage extends StatefulWidget {
   const AddDataPage({super.key});
@@ -12,12 +12,12 @@ class AddDataPage extends StatefulWidget {
 
 class _AddDataPageState extends State<AddDataPage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controller & State
   final TextEditingController _valueController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
-  
+
   // Data Item
   List<Map<String, dynamic>> _allItems = [];
   List<Map<String, dynamic>> _filteredItems = [];
@@ -43,9 +43,15 @@ class _AddDataPageState extends State<AddDataPage> {
   void _filterItems(String query) {
     setState(() {
       _filteredItems = _allItems
-          .where((item) =>
-              item['code'].toString().toLowerCase().contains(query.toLowerCase()) ||
-              (item['description'] ?? "").toString().toLowerCase().contains(query.toLowerCase()))
+          .where(
+            (item) =>
+                item['code'].toString().toLowerCase().contains(
+                  query.toLowerCase(),
+                ) ||
+                (item['description'] ?? "").toString().toLowerCase().contains(
+                  query.toLowerCase(),
+                ),
+          )
           .toList();
     });
   }
@@ -81,13 +87,17 @@ class _AddDataPageState extends State<AddDataPage> {
         };
 
         // Ganti dengan fungsi simpan transaksi/data Anda di AppDb
-        await AppDb.instance.insertTransaction(newData); 
-
+        await AppDb.instance.insertTransaction(newData);
+        Future.delayed(Duration.zero, () {
+          RefreshNotifier.triggerRefresh();
+        });
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Data successfully added!"), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text("Data successfully added!"),
+            backgroundColor: Colors.green,
+          ),
         );
-        context.pop(true); // Kembali ke list dengan sinyal refresh
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
@@ -110,14 +120,20 @@ class _AddDataPageState extends State<AddDataPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Select Item", style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary)),
+                    Text(
+                      "Select Item",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    
+
                     // SELECTION AREA (SEARCH + LISTVIEW)
                     _buildItemSelector(cs),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // VALUE INPUT
                     TextFormField(
                       controller: _valueController,
@@ -129,9 +145,9 @@ class _AddDataPageState extends State<AddDataPage> {
                       ),
                       validator: (v) => v!.isEmpty ? "Value required" : null,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // DATE PICKER
                     InkWell(
                       onTap: _pickDate,
@@ -141,12 +157,16 @@ class _AddDataPageState extends State<AddDataPage> {
                           prefixIcon: Icon(Icons.calendar_month),
                           border: OutlineInputBorder(),
                         ),
-                        child: Text(DateFormat('EEEE, dd MMMM yyyy').format(_selectedDate)),
+                        child: Text(
+                          DateFormat(
+                            'EEEE, dd MMMM yyyy',
+                          ).format(_selectedDate),
+                        ),
                       ),
                     ),
-                    
+
                     const Spacer(),
-                    
+
                     // SUBMIT BUTTON
                     SizedBox(
                       width: double.infinity,
@@ -154,7 +174,10 @@ class _AddDataPageState extends State<AddDataPage> {
                       child: FilledButton.icon(
                         onPressed: _saveData,
                         icon: const Icon(Icons.check_circle),
-                        label: const Text("SAVE TRANSACTION", style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text(
+                          "SAVE TRANSACTION",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
                   ],
@@ -185,7 +208,10 @@ class _AddDataPageState extends State<AddDataPage> {
                 isDense: true,
                 filled: true,
                 fillColor: cs.surfaceContainerHigh,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ),
@@ -197,15 +223,25 @@ class _AddDataPageState extends State<AddDataPage> {
               itemBuilder: (context, index) {
                 final item = _filteredItems[index];
                 final isSelected = _selectedItem?['id'] == item['id'];
-                
+
                 return ListTile(
                   selected: isSelected,
                   selectedTileColor: cs.primaryContainer.withOpacity(0.3),
                   leading: CircleAvatar(
-                    backgroundColor: isSelected ? cs.primary : cs.surfaceContainerHighest,
-                    child: Text(item['code'][0], style: TextStyle(color: isSelected ? Colors.white : cs.onSurface)),
+                    backgroundColor: isSelected
+                        ? cs.primary
+                        : cs.surfaceContainerHighest,
+                    child: Text(
+                      item['code'][0],
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : cs.onSurface,
+                      ),
+                    ),
                   ),
-                  title: Text(item['code'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    item['code'],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text(item['description'] ?? "No description"),
                   onTap: () => setState(() => _selectedItem = item),
                 );

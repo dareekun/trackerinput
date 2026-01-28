@@ -83,14 +83,6 @@ class AppDb {
     return result.isNotEmpty;
   }
 
-  // Di dalam class AppDb (app_db.dart)
-  Future<bool> hasAnyUser() async {
-    final db = await database;
-    final List<Map<String, dynamic>> result = await db.rawQuery('SELECT COUNT(*) as total FROM users');
-    int? count = Sqflite.firstIntValue(result);
-    return (count ?? 0) > 0;
-  }
-
   // Tambahkan fungsi untuk update aktivitas
   Future<void> updateLastActivity(String email) async {
     final db = await database;
@@ -154,6 +146,38 @@ class AppDb {
 
   /* ----------------------- CRUD TRANSACTIONS ----------------------- */
 
+  // --- FUNGSI UPDATE DATA TRANSAKSI ---
+  /// Memperbarui nilai dan tanggal transaksi berdasarkan ID
+  Future<int> updateTransaction({required int id, required double value, required String date}) async {
+    final db = await database;
+    return await db.update(
+      'transactions',
+      {
+        'value': value,
+        'date': date,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // --- FUNGSI HAPUS DATA TRANSAKSI ---
+  /// Menghapus baris transaksi secara permanen berdasarkan ID
+  Future<int> deleteTransaction(int id) async {
+    final db = await database;
+    return await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --- FUNGSI UNTUK CEK APAKAH ADA USER (Digunakan di Splash Page) ---
+  /// Menghitung jumlah user terdaftar untuk menentukan alur login/registrasi
+  Future<bool> hasAnyUser() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = 
+        await db.rawQuery('SELECT COUNT(*) as total FROM users');
+    int? count = Sqflite.firstIntValue(result);
+    return (count ?? 0) > 0;
+  }
+
   Future<int> insertTransaction(Map<String, dynamic> row) async {
     final db = await database;
     return await db.insert('transactions', row);
@@ -179,10 +203,5 @@ class AppDb {
       whereArgs: [itemId], 
       orderBy: 'date DESC'
     );
-  }
-
-  Future<int> deleteTransaction(int id) async {
-    final db = await database;
-    return await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
   }
 }

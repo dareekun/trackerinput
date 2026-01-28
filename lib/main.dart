@@ -29,12 +29,12 @@ Future<void> main() async {
     await windowManager.ensureInitialized();
 
     WindowOptions windowOptions = const WindowOptions(
-      size: Size(1280, 770),
+      size: Size(1280, 860),
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.normal,
-      minimumSize: Size(1280, 770),
+      minimumSize: Size(1280, 860),
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {

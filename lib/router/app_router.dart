@@ -14,6 +14,7 @@ import '../pages/sections/history_page.dart';
 import '../pages/sections/add_data_page.dart';
 import '../pages/sections/update_data_page.dart';
 import '../pages/sections/reminder_page.dart';
+import '../pages/sections/detail_history_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -57,6 +58,12 @@ class AppRouter {
             GoRoute(path: '/update', builder: (context, state) {
             final item = state.extra as Map<String, dynamic>;
             return UpdateDataPage(item: item);
+            }),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/detailhistory', builder: (context, state) {
+            final date = state.uri.queryParameters['date']; // Mengambil ?date=...
+            return DetailHistoryPage(filterDate: date);
             }),
           ]),
         ],
