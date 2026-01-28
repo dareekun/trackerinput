@@ -13,12 +13,12 @@ class AddDataPage extends StatefulWidget {
 class _AddDataPageState extends State<AddDataPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controller & State
+  // Controller & State untuk inputan user
   final TextEditingController _valueController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
 
-  // Data Item
+  // Data Item untuk menampung daftar dari database
   List<Map<String, dynamic>> _allItems = [];
   List<Map<String, dynamic>> _filteredItems = [];
   Map<String, dynamic>? _selectedItem;
@@ -27,12 +27,14 @@ class _AddDataPageState extends State<AddDataPage> {
   @override
   void initState() {
     super.initState();
+    // Initial load pertama kali halaman dibuka
     _loadItems();
   }
 
-  // Mengambil daftar item terdaftar untuk dipilih
+  /// Fungsi untuk mengambil daftar item terdaftar dari database SQLite
   Future<void> _loadItems() async {
     final items = await AppDb.instance.getAllItems();
+    if (!mounted) return;
     setState(() {
       _allItems = items;
       _filteredItems = items;
@@ -40,22 +42,24 @@ class _AddDataPageState extends State<AddDataPage> {
     });
   }
 
+  /// Fungsi untuk menyaring daftar item berdasarkan input pencarian user
   void _filterItems(String query) {
     setState(() {
       _filteredItems = _allItems
           .where(
             (item) =>
                 item['code'].toString().toLowerCase().contains(
-                  query.toLowerCase(),
-                ) ||
+                      query.toLowerCase(),
+                    ) ||
                 (item['description'] ?? "").toString().toLowerCase().contains(
-                  query.toLowerCase(),
-                ),
+                      query.toLowerCase(),
+                    ),
           )
           .toList();
     });
   }
 
+  /// Fungsi untuk menampilkan kalender dan memilih tanggal transaksi
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -68,7 +72,9 @@ class _AddDataPageState extends State<AddDataPage> {
     }
   }
 
+  /// Fungsi untuk memvalidasi dan menyimpan transaksi baru ke database
   Future<void> _saveData() async {
+    // Validasi apakah item sudah dipilih
     if (_selectedItem == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select an item first!")),
@@ -76,6 +82,7 @@ class _AddDataPageState extends State<AddDataPage> {
       return;
     }
 
+    // Validasi form input value
     if (_formKey.currentState!.validate()) {
       try {
         final newData = {
@@ -86,12 +93,23 @@ class _AddDataPageState extends State<AddDataPage> {
           'created_at': DateTime.now().toIso8601String(),
         };
 
-        // Ganti dengan fungsi simpan transaksi/data Anda di AppDb
+        // Simpan transaksi ke database
         await AppDb.instance.insertTransaction(newData);
+        
+        // Memicu refresh global agar halaman lain (Dashboard, History) terupdate
         Future.delayed(Duration.zero, () {
           RefreshNotifier.triggerRefresh();
         });
+
         if (!mounted) return;
+
+        // Reset form setelah berhasil simpan
+        setState(() {
+          _valueController.clear();
+          _selectedItem = null;
+          _searchController.clear();
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Data successfully added!"),
@@ -110,83 +128,110 @@ class _AddDataPageState extends State<AddDataPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Select Item",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: cs.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+    // ValueListenableBuilder mendengarkan sinyal dari RefreshNotifier
+    return ValueListenableBuilder(
+      valueListenable: RefreshNotifier.refreshCounter,
+      builder: (context, counter, child) {
+        
+        // FutureBuilder mengambil data item terbaru setiap kali ada sinyal refresh
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: AppDb.instance.getAllItems(),
+          builder: (context, snapshot) {
+            
+            // Jika data berhasil diambil, update list internal
+            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+              _allItems = snapshot.data!;
+              
+              // Logika agar hasil pencarian tidak hilang saat refresh otomatis terjadi
+              _filteredItems = _searchController.text.isEmpty 
+                  ? _allItems 
+                  : _allItems.where((item) => 
+                      item['code'].toString().toLowerCase().contains(_searchController.text.toLowerCase())
+                    ).toList();
+            }
 
-                    // SELECTION AREA (SEARCH + LISTVIEW)
-                    _buildItemSelector(cs),
+            return Scaffold(
+              body: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Select Item",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: cs.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
 
-                    const SizedBox(height: 24),
+                            // Memanggil widget selector item
+                            _buildItemSelector(cs),
 
-                    // VALUE INPUT
-                    TextFormField(
-                      controller: _valueController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: "Input Value",
-                        prefixIcon: Icon(Icons.calculate_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (v) => v!.isEmpty ? "Value required" : null,
-                    ),
+                            const SizedBox(height: 24),
 
-                    const SizedBox(height: 16),
+                            // Input untuk nominal/nilai transaksi
+                            TextFormField(
+                              controller: _valueController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: "Input Value",
+                                prefixIcon: Icon(Icons.calculate_outlined),
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (v) => v!.isEmpty ? "Value required" : null,
+                            ),
 
-                    // DATE PICKER
-                    InkWell(
-                      onTap: _pickDate,
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: "Transaction Date",
-                          prefixIcon: Icon(Icons.calendar_month),
-                          border: OutlineInputBorder(),
+                            const SizedBox(height: 16),
+
+                            // Picker untuk tanggal transaksi
+                            InkWell(
+                              onTap: _pickDate,
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: "Transaction Date",
+                                  prefixIcon: Icon(Icons.calendar_month),
+                                  border: OutlineInputBorder(),
+                                ),
+                                child: Text(
+                                  DateFormat(
+                                    'EEEE, dd MMMM yyyy',
+                                  ).format(_selectedDate),
+                                ),
+                              ),
+                            ),
+
+                            const Spacer(),
+
+                            // Tombol untuk eksekusi simpan
+                            SizedBox(
+                              width: double.infinity,
+                              height: 56,
+                              child: FilledButton.icon(
+                                onPressed: _saveData,
+                                icon: const Icon(Icons.check_circle),
+                                label: const Text(
+                                  "SAVE TRANSACTION",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          DateFormat(
-                            'EEEE, dd MMMM yyyy',
-                          ).format(_selectedDate),
-                        ),
                       ),
                     ),
-
-                    const Spacer(),
-
-                    // SUBMIT BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: FilledButton.icon(
-                        onPressed: _saveData,
-                        icon: const Icon(Icons.check_circle),
-                        label: const Text(
-                          "SAVE TRANSACTION",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            );
+          },
+        );
+      },
     );
   }
 
+  /// Widget untuk membangun area pemilihan item yang dilengkapi fitur pencarian
   Widget _buildItemSelector(ColorScheme cs) {
     return Container(
       height: 250,
@@ -196,7 +241,7 @@ class _AddDataPageState extends State<AddDataPage> {
       ),
       child: Column(
         children: [
-          // Search Field inside selector
+          // Field pencarian di dalam selector
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -216,7 +261,8 @@ class _AddDataPageState extends State<AddDataPage> {
             ),
           ),
           const Divider(height: 1),
-          // ListView of Items
+          
+          // Daftar item yang bisa dipilih
           Expanded(
             child: ListView.builder(
               itemCount: _filteredItems.length,
