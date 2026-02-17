@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../db/app_db.dart';
 import '../../main.dart';   // Import navigatorKey dari main.dart
 
@@ -15,22 +14,19 @@ class SessionManager {
   static const int _timeoutMinutes = 60;
 
   // ===== Sesi login =====
-static Future<void> setCurrentUser(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyCurrentUser, email.trim().toLowerCase());
-    await AppDb.instance.updateLastActivity(email);
+  static Future<void> setCurrentUser(String username) async {
+    await AppDb.instance.setSessionValue(_keyCurrentUser, username.trim().toLowerCase());
+    await AppDb.instance.updateLastActivity(username);
     startTimeoutTimer(); // Mulai timer saat login
   }
 
   static Future<String?> getCurrentUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyCurrentUser);
+    return await AppDb.instance.getSessionValue(_keyCurrentUser);
   }
 
   static Future<void> clear() async {
     _sessionTimer?.cancel(); // Matikan timer
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyCurrentUser);
+    await AppDb.instance.removeSessionValue(_keyCurrentUser);
   }
 
   // ===== LOGIKA TIMEOUT =====
@@ -67,28 +63,24 @@ static Future<void> setCurrentUser(String email) async {
 
   // ===== Preferensi biometrik =====
   static Future<void> setBiometricEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyBiometricEnabled, enabled);
+    await AppDb.instance.setSessionValue(_keyBiometricEnabled, enabled.toString());
   }
 
   static Future<bool> isBiometricEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyBiometricEnabled) ?? false;
+    final val = await AppDb.instance.getSessionValue(_keyBiometricEnabled);
+    return val == 'true';
   }
 
-  static Future<void> setBiometricUser(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyBiometricUser, email.trim().toLowerCase());
+  static Future<void> setBiometricUser(String username) async {
+    await AppDb.instance.setSessionValue(_keyBiometricUser, username.trim().toLowerCase());
   }
 
   static Future<String?> getBiometricUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyBiometricUser);
+    return await AppDb.instance.getSessionValue(_keyBiometricUser);
   }
 
   static Future<void> clearBiometric() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyBiometricEnabled);
-    await prefs.remove(_keyBiometricUser);
+    await AppDb.instance.removeSessionValue(_keyBiometricEnabled);
+    await AppDb.instance.removeSessionValue(_keyBiometricUser);
   }
 }

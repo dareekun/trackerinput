@@ -12,7 +12,7 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtl = TextEditingController();
-  final _emailCtl = TextEditingController();
+  final _usernameCtl = TextEditingController();
   final _passwordCtl = TextEditingController();
   final _confirmCtl = TextEditingController();
   final _questionCtl = TextEditingController();
@@ -28,7 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _nameCtl.dispose();
-    _emailCtl.dispose();
+    _usernameCtl.dispose();
     _passwordCtl.dispose();
     _confirmCtl.dispose();
     _questionCtl.dispose();
@@ -42,7 +42,7 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final ok = await AuthRepository.instance.register(
         name: _nameCtl.text.trim(),
-        email: _emailCtl.text.trim(),
+        username: _usernameCtl.text.trim(),
         password: _passwordCtl.text,
         recoveryQuestion: _questionCtl.text.trim().isEmpty
             ? null
@@ -68,7 +68,7 @@ class _RegisterPageState extends State<RegisterPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Email sudah terdaftar. Gunakan email lain.'),
+            content: Text('Username sudah terdaftar. Gunakan username lain.'),
           ),
         );
       }
@@ -213,16 +213,14 @@ class _RegisterPageState extends State<RegisterPage> {
             const SizedBox(height: 16),
 
             _buildField(
-              controller: _emailCtl,
-              label: "Email",
-              icon: Icons.email_outlined,
-              type: TextInputType.emailAddress,
+              controller: _usernameCtl,
+              label: "Username",
+              icon: Icons.person_outline,
+              type: TextInputType.text,
               validator: (v) {
                 final s = (v ?? '').trim();
-                if (s.isEmpty) return 'Email wajib diisi';
-                if (!RegExp(r'^[\w\.\-]+@[\w\.\-]+\.\w+$').hasMatch(s)) {
-                  return 'Format tidak valid';
-                }
+                if (s.isEmpty) return 'Username wajib diisi';
+                if (s.length < 3) return 'Username minimal 3 karakter';
                 return null;
               },
             ),

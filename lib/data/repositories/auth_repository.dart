@@ -11,7 +11,7 @@ class AuthRepository {
 
   Future<bool> register({
     required String name,
-    required String email,
+    required String username,
     required String password,
     String? recoveryQuestion,
     String? recoveryAnswer,
@@ -30,8 +30,8 @@ class AuthRepository {
 
     try {
       await db.insert('users', {
-        'name': name.trim(), // Pastikan kolom 'name' sudah ada di tabel users
-        'email': email.trim().toLowerCase(),
+        'name': name.trim(),
+        'username': username.trim().toLowerCase(),
         'password_hash': passwordHash,
         'salt': salt,
         'recovery_question': recoveryQuestion?.trim(),
@@ -47,12 +47,12 @@ class AuthRepository {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String username, String password) async {
     final db = await _db;
     final rows = await db.query(
       'users',
-      where: 'email = ?',
-      whereArgs: [email.trim().toLowerCase()],
+      where: 'username = ?',
+      whereArgs: [username.trim().toLowerCase()],
       limit: 1,
     );
     if (rows.isEmpty) return false;
@@ -60,13 +60,13 @@ class AuthRepository {
     return CryptoUtil.verify(password, user.salt, user.passwordHash);
   }
 
-  Future<String?> getRecoveryQuestion(String email) async {
+  Future<String?> getRecoveryQuestion(String username) async {
     final db = await _db;
     final rows = await db.query(
       'users',
       columns: ['recovery_question'],
-      where: 'email = ?',
-      whereArgs: [email.trim().toLowerCase()],
+      where: 'username = ?',
+      whereArgs: [username.trim().toLowerCase()],
       limit: 1,
     );
     if (rows.isEmpty) return null;
@@ -74,15 +74,15 @@ class AuthRepository {
   }
 
   Future<bool> resetPasswordWithRecovery({
-    required String email,
+    required String username,
     required String recoveryAnswer,
     required String newPassword,
   }) async {
     final db = await _db;
     final rows = await db.query(
       'users',
-      where: 'email = ?',
-      whereArgs: [email.trim().toLowerCase()],
+      where: 'username = ?',
+      whereArgs: [username.trim().toLowerCase()],
       limit: 1,
     );
     if (rows.isEmpty) return false;
@@ -101,22 +101,22 @@ class AuthRepository {
     final count = await db.update(
       'users',
       {'password_hash': newHash, 'salt': newSalt},
-      where: 'email = ?',
-      whereArgs: [email.trim().toLowerCase()],
+      where: 'username = ?',
+      whereArgs: [username.trim().toLowerCase()],
     );
     return count == 1;
   }
 
   Future<bool> changePassword({
-    required String email,
+    required String username,
     required String oldPassword,
     required String newPassword,
   }) async {
     final db = await _db;
     final rows = await db.query(
       'users',
-      where: 'email = ?',
-      whereArgs: [email.trim().toLowerCase()],
+      where: 'username = ?',
+      whereArgs: [username.trim().toLowerCase()],
       limit: 1,
     );
     if (rows.isEmpty) return false;
@@ -130,8 +130,8 @@ class AuthRepository {
     final count = await db.update(
       'users',
       {'password_hash': newHash, 'salt': newSalt},
-      where: 'email = ?',
-      whereArgs: [email.trim().toLowerCase()],
+      where: 'username = ?',
+      whereArgs: [username.trim().toLowerCase()],
     );
     return count == 1;
   }

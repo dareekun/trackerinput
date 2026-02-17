@@ -11,7 +11,7 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  String _email = '-';
+  String _username = '-';
   String _name = 'User Baru';
   bool _isEditing = false;
   final _nameController = TextEditingController();
@@ -23,12 +23,12 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _loadUserData() async {
-    final email = await SessionManager.getCurrentUser();
-    if (email != null) {
-      final userData = await AppDb.instance.getUserData(email);
+    final username = await SessionManager.getCurrentUser();
+    if (username != null) {
+      final userData = await AppDb.instance.getUserData(username);
       if (mounted) {
         setState(() {
-          _email = email;
+          _username = username;
           _name = userData?['name'] ?? 'Guest';
           _nameController.text = _name;
         });
@@ -39,7 +39,7 @@ class _AccountPageState extends State<AccountPage> {
   Future<void> _saveName() async {
     if (_nameController.text.trim().isEmpty) return;
 
-    await AppDb.instance.updateUserName(_email, _nameController.text.trim());
+    await AppDb.instance.updateUserName(_username, _nameController.text.trim());
     setState(() {
       _name = _nameController.text.trim();
       _isEditing = false;
@@ -144,7 +144,7 @@ class _AccountPageState extends State<AccountPage> {
                           ),
                         ],
                       ),
-                      Text(_email, style: TextStyle(color: cs.outline)),
+                      Text(_username, style: TextStyle(color: cs.outline)),
                     ],
                   ),
                 //------------------

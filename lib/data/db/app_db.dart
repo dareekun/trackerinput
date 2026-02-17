@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class AppDb {
   AppDb._internal();
@@ -13,10 +15,21 @@ class AppDb {
     return _db!;
   }
 
+  /// Mengembalikan path direktori tempat database disimpan
+  Future<String> getDbDirectoryPath() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    return p.join(appDir.path, 'database');
+  }
+
   Future<Database> _initDb() async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, 'auth_demo.db'); 
-    
+    final dbDir = await getDbDirectoryPath();
+    // Buat folder 'database' jika belum ada
+    final dir = Directory(dbDir);
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    final path = p.join(dbDir, 'auth_demo.db');
+
     return await openDatabase(
       path,
       version: 1, 
@@ -30,7 +43,7 @@ class AppDb {
     await db.execute('''
       CREATE TABLE users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT NOT NULL UNIQUE,
+        username TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         salt TEXT NOT NULL,
@@ -41,7 +54,7 @@ class AppDb {
         last_activity TEXT
       )
     ''');
-    await db.execute('CREATE INDEX idx_users_email ON users(email)');
+    await db.execute('CREATE INDEX idx_users_username ON users(username)');
 
     // Tabel Items
     await db.execute('''
@@ -63,10 +76,46 @@ class AppDb {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         item_id INTEGER,
         item_code TEXT,
+        document_id INTEGER,
         value REAL,
         date TEXT,
         created_at TEXT,
+        FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE,
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE SET NULL
+      )
+    ''');
+
+    // Tabel Documents
+    await db.execute('''
+      CREATE TABLE documents(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        doc_number TEXT NOT NULL UNIQUE,
+        created_at TEXT
+      )
+    ''');
+    await db.execute('CREATE UNIQUE INDEX idx_doc_number ON documents(doc_number)');
+
+    // Tabel Document Items (relasi many-to-many antara document & item)
+    await db.execute('''
+      CREATE TABLE document_items(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_id INTEGER NOT NULL,
+        item_id INTEGER NOT NULL,
+        limit_value REAL,
+        uom TEXT,
+        created_at TEXT,
+        FOREIGN KEY (document_id) REFERENCES documents (id) ON DELETE CASCADE,
         FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_docitems_doc ON document_items(document_id)');
+    await db.execute('CREATE INDEX idx_docitems_item ON document_items(item_id)');
+
+    // Tabel Sessions (menyimpan data sesi login & biometrik)
+    await db.execute('''
+      CREATE TABLE sessions(
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       )
     ''');
   }
@@ -85,13 +134,13 @@ class AppDb {
   }
 
   // Tambahkan fungsi untuk update aktivitas
-  Future<void> updateLastActivity(String email) async {
+  Future<void> updateLastActivity(String username) async {
     final db = await database;
     await db.update(
       'users',
       {'last_activity': DateTime.now().toIso8601String()},
-      where: 'email = ?',
-      whereArgs: [email.trim().toLowerCase()],
+      where: 'username = ?',
+      whereArgs: [username.trim().toLowerCase()],
     );
   }
   
@@ -127,21 +176,21 @@ class AppDb {
     return await db.query('items', orderBy: 'id DESC');
   }
 
-  // Fungsi untuk mengambil data user lengkap berdasarkan email
-  Future<Map<String, dynamic>?> getUserData(String email) async {
+  // Fungsi untuk mengambil data user lengkap berdasarkan username
+  Future<Map<String, dynamic>?> getUserData(String username) async {
     final db = await database;
-    final results = await db.query('users', where: 'email = ?', whereArgs: [email]);
+    final results = await db.query('users', where: 'username = ?', whereArgs: [username]);
     return results.isNotEmpty ? results.first : null;
   }
 
   // Fungsi untuk update nama
-  Future<int> updateUserName(String email, String newName) async {
+  Future<int> updateUserName(String username, String newName) async {
     final db = await database;
     return await db.update(
       'users',
-      {'name': newName}, // Pastikan kolom 'name' sudah ada di tabel users
-      where: 'email = ?',
-      whereArgs: [email],
+      {'name': newName},
+      where: 'username = ?',
+      whereArgs: [username],
     );
   }
 
@@ -204,5 +253,157 @@ class AppDb {
       whereArgs: [itemId], 
       orderBy: 'date DESC'
     );
+  }
+
+  /* ----------------------- CRUD DOCUMENTS ----------------------- */
+
+  /// Cek apakah nomor dokumen sudah ada
+  Future<bool> isDocNumberExists(String docNumber) async {
+    final db = await database;
+    final result = await db.query(
+      'documents',
+      where: 'doc_number = ?',
+      whereArgs: [docNumber],
+      limit: 1,
+    );
+    return result.isNotEmpty;
+  }
+
+  /// Insert dokumen baru, return id-nya
+  Future<int> insertDocument(String docNumber) async {
+    final db = await database;
+    return await db.insert('documents', {
+      'doc_number': docNumber.trim(),
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Ambil semua dokumen
+  Future<List<Map<String, dynamic>>> getAllDocuments() async {
+    final db = await database;
+    return await db.query('documents', orderBy: 'id DESC');
+  }
+
+  /// Hapus dokumen (dan relasi document_items akan terhapus via CASCADE)
+  Future<int> deleteDocument(int id) async {
+    final db = await database;
+    return await db.delete('documents', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Tambahkan item ke dokumen dengan limit & uom khusus dokumen
+  Future<int> insertDocumentItem(int documentId, int itemId, {double? limitValue, String? uom}) async {
+    final db = await database;
+    return await db.insert('document_items', {
+      'document_id': documentId,
+      'item_id': itemId,
+      'limit_value': limitValue,
+      'uom': uom,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  /// Hapus item dari dokumen
+  Future<int> deleteDocumentItem(int id) async {
+    final db = await database;
+    return await db.delete('document_items', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Ambil semua item dalam satu dokumen (JOIN dengan items)
+  Future<List<Map<String, dynamic>>> getDocumentItems(int documentId) async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT di.id as doc_item_id, di.document_id, di.item_id, di.created_at as added_at,
+             di.limit_value as doc_limit_value, di.uom as doc_uom,
+             i.code, i.description, i.limit_value as item_limit_value, i.uom as item_uom,
+             i.is_reminder, i.reminder_limit
+      FROM document_items di
+      LEFT JOIN items i ON di.item_id = i.id
+      WHERE di.document_id = ?
+      ORDER BY di.id ASC
+    ''', [documentId]);
+  }
+
+  /// Get all documents that contain a specific item (for dropdown in add record)
+  Future<List<Map<String, dynamic>>> getDocumentsForItem(int itemId) async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT d.id, d.doc_number, di.limit_value as doc_limit_value, di.uom as doc_uom
+      FROM document_items di
+      JOIN documents d ON di.document_id = d.id
+      WHERE di.item_id = ?
+      ORDER BY d.doc_number ASC
+    ''', [itemId]);
+  }
+
+  /// Get consumed quota: sum of transaction values for an item in a specific document
+  Future<double> getConsumedQuota(int itemId, int documentId) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT COALESCE(SUM(value), 0) as total
+      FROM transactions
+      WHERE item_id = ? AND document_id = ?
+    ''', [itemId, documentId]);
+    return (result.first['total'] as num?)?.toDouble() ?? 0.0;
+  }
+
+  /// Cek apakah item sudah ada di dokumen tertentu
+  Future<bool> isItemInDocument(int documentId, int itemId) async {
+    final db = await database;
+    final result = await db.query(
+      'document_items',
+      where: 'document_id = ? AND item_id = ?',
+      whereArgs: [documentId, itemId],
+      limit: 1,
+    );
+    return result.isNotEmpty;
+  }
+
+  /// Ambil semua dokumen beserta jumlah item
+  Future<List<Map<String, dynamic>>> getAllDocumentsWithItemCount() async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT d.*, COUNT(di.id) as item_count
+      FROM documents d
+      LEFT JOIN document_items di ON d.id = di.document_id
+      GROUP BY d.id
+      ORDER BY d.id DESC
+    ''');
+  }
+
+  /* -------------------------- SESSION CRUD -------------------------- */
+
+  /// Simpan atau update nilai session berdasarkan key
+  Future<void> setSessionValue(String key, String value) async {
+    final db = await database;
+    await db.insert(
+      'sessions',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Ambil nilai session berdasarkan key
+  Future<String?> getSessionValue(String key) async {
+    final db = await database;
+    final rows = await db.query(
+      'sessions',
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['value'] as String?;
+  }
+
+  /// Hapus satu session berdasarkan key
+  Future<void> removeSessionValue(String key) async {
+    final db = await database;
+    await db.delete('sessions', where: 'key = ?', whereArgs: [key]);
+  }
+
+  /// Hapus semua data session
+  Future<void> clearAllSessions() async {
+    final db = await database;
+    await db.delete('sessions');
   }
 }

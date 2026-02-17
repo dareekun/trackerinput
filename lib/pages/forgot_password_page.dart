@@ -10,7 +10,7 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _emailCtl = TextEditingController();
+  final _usernameCtl = TextEditingController();
   final _answerCtl = TextEditingController();
   final _newPassCtl = TextEditingController();
   final _confirmCtl = TextEditingController();
@@ -23,7 +23,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   void dispose() {
-    _emailCtl.dispose();
+    _usernameCtl.dispose();
     _answerCtl.dispose();
     _newPassCtl.dispose();
     _confirmCtl.dispose();
@@ -31,14 +31,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Future<void> _fetchQuestion() async {
-    final email = _emailCtl.text.trim();
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Masukkan email terlebih dahulu.')));
+    final username = _usernameCtl.text.trim();
+    if (username.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Masukkan username terlebih dahulu.')));
       return;
     }
     setState(() => _isLoading = true);
     try {
-      final q = await AuthRepository.instance.getRecoveryQuestion(email);
+      final q = await AuthRepository.instance.getRecoveryQuestion(username);
       if (!mounted) return;
       if (q == null || q.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Akun tidak memiliki pertanyaan pemulihan.')));
@@ -57,7 +57,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Future<void> _resetPassword() async {
-    final email = _emailCtl.text.trim();
+    final username = _usernameCtl.text.trim();
     final answer = _answerCtl.text.trim();
     final p1 = _newPassCtl.text;
     final p2 = _confirmCtl.text;
@@ -76,7 +76,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
     try {
       final ok = await AuthRepository.instance.resetPasswordWithRecovery(
-        email: email,
+        username: username,
         recoveryAnswer: answer,
         newPassword: p1,
       );
@@ -104,12 +104,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         child: Column(
           children: [
             TextField(
-              controller: _emailCtl,
+              controller: _usernameCtl,
               decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
+                labelText: 'Username',
+                prefixIcon: Icon(Icons.person_outline),
               ),
-              keyboardType: TextInputType.emailAddress,
+              keyboardType: TextInputType.text,
             ),
             const SizedBox(height: 12),
             if (!_step2) ...[

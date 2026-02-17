@@ -1,7 +1,7 @@
 class User {
   final int? id;
   final String name;
-  final String email;
+  final String username;
   final String passwordHash;
   final String salt;
   final String? recoveryQuestion;
@@ -12,7 +12,7 @@ class User {
   User({
     this.id,
     required this.name,
-    required this.email,
+    required this.username,
     required this.passwordHash,
     required this.salt,
     this.recoveryQuestion,
@@ -24,7 +24,7 @@ class User {
   Map<String, dynamic> toMap() => {
         'id': id,
         'name': name,
-        'email': email,
+        'username': username,
         'password_hash': passwordHash,
         'salt': salt,
         'recovery_question': recoveryQuestion,
@@ -36,7 +36,7 @@ class User {
   factory User.fromMap(Map<String, dynamic> map) => User(
         id: map['id'] as int?,
         name: map['name'] as String,
-        email: map['email'] as String,
+        username: map['username'] as String,
         passwordHash: map['password_hash'] as String,
         salt: map['salt'] as String,
         recoveryQuestion: map['recovery_question'] as String?,

@@ -1,8 +1,11 @@
 
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:go_router/go_router.dart'; // <— Tambah ini
 
+import '../../data/db/app_db.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/session/session_manager.dart';
 import 'forgot_password_page.dart';
@@ -16,7 +19,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtl = TextEditingController();
+  final _usernameCtl = TextEditingController();
   final _passwordCtl = TextEditingController();
   bool _obscure = true;
   bool _isLoading = false;
@@ -54,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _emailCtl.dispose();
+    _usernameCtl.dispose();
     _passwordCtl.dispose();
     super.dispose();
   }
@@ -64,17 +67,17 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
     try {
       final ok = await AuthRepository.instance.login(
-        _emailCtl.text,
+        _usernameCtl.text,
         _passwordCtl.text,
       );
       if (!mounted) return;
       if (ok) {
-        await SessionManager.setCurrentUser(_emailCtl.text);
+        await SessionManager.setCurrentUser(_usernameCtl.text);
         // === PENTING: arahkan ke rute shell, bukan dorong widget ===
         context.go('/dashboard');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Email atau password salah.')),
+          const SnackBar(content: Text('Username atau password salah.')),
         );
       }
     } catch (e) {
@@ -87,11 +90,10 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  String? _validateEmail(String? v) {
+  String? _validateUsername(String? v) {
     final s = (v ?? '').trim();
-    if (s.isEmpty) return 'Email wajib diisi';
-    final re = RegExp(r'^[\w\.\-]+@[\w\.\-]+\.\w+$');
-    if (!re.hasMatch(s)) return 'Format email tidak valid';
+    if (s.isEmpty) return 'Username wajib diisi';
+    if (s.length < 3) return 'Username minimal 3 karakter';
     return null;
   }
 
@@ -124,15 +126,15 @@ class _LoginPageState extends State<LoginPage> {
                       Text('Masuk', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 24),
                       TextFormField(
-                        controller: _emailCtl,
+                        controller: _usernameCtl,
                         decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.email_outlined),
+                          labelText: 'Username',
+                          prefixIcon: Icon(Icons.person_outline),
                         ),
-                        validator: _validateEmail,
-                        keyboardType: TextInputType.emailAddress,
+                        validator: _validateUsername,
+                        keyboardType: TextInputType.text,
                         textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.email, AutofillHints.username],
+                        autofillHints: const [AutofillHints.username],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -206,6 +208,59 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ],
                       const SizedBox(height: 12),
+                      // Secret debug button — hanya muncul di debug/profile mode
+                      if (kDebugMode) ...[  
+                        TextButton.icon(
+                          onPressed: () async {
+                            try {
+                              final dbPath = await AppDb.instance.getDbDirectoryPath();
+                              if (!context.mounted) return;
+                              
+                              // Coba buka folder langsung di desktop
+                              if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+                                final String command;
+                                final List<String> args;
+                                if (Platform.isMacOS) {
+                                  command = 'open';
+                                  args = [dbPath];
+                                } else if (Platform.isWindows) {
+                                  command = 'explorer';
+                                  args = [dbPath];
+                                } else {
+                                  command = 'xdg-open';
+                                  args = [dbPath];
+                                }
+                                await Process.run(command, args);
+                              } else {
+                                // Di mobile, tampilkan path di dialog
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Database Location'),
+                                    content: SelectableText(dbPath),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.folder_open, size: 16),
+                          label: const Text('DB Location', style: TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

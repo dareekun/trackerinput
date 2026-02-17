@@ -19,14 +19,15 @@ class DashboardShell extends StatefulWidget {
 }
 
 class _DashboardShellState extends State<DashboardShell> {
-  String? _email;
+  String? _username;
   int _reminderCount = 0; // Variable didefinisikan di sini
 
   final List<NavItem> _menuItems = const [
     NavItem(Icons.dashboard_outlined, 'Dashboard'),
-    NavItem(Icons.edit_outlined, 'Register Item'),
+    NavItem(Icons.edit_outlined, 'Register Doc'),
     NavItem(Icons.article_outlined, 'Data List'),
-    NavItem(Icons.apps_outlined, 'Add Data'),
+    NavItem(Icons.folder_outlined, 'Document List'),
+    NavItem(Icons.apps_outlined, 'Add Record'),
     NavItem(Icons.history, 'History'),
     NavItem(Icons.account_circle_outlined, 'Account'),
   ];
@@ -40,14 +41,14 @@ class _DashboardShellState extends State<DashboardShell> {
 
   Future<void> _loadUser() async {
     try {
-      final email = await SessionManager.getCurrentUser();
+      final username = await SessionManager.getCurrentUser();
       if (!mounted) return;
       setState(() {
-        _email = email ?? "Guest User";
+        _username = username ?? "Guest User";
       });
     } catch (e) {
       debugPrint("Gagal memuat session: $e");
-      setState(() => _email = "Error User");
+      setState(() => _username = "Error User");
     }
   }
 
@@ -123,7 +124,7 @@ class _DashboardShellState extends State<DashboardShell> {
                   // PERBAIKAN: Melemparkan variable _reminderCount ke _HeaderBar
                   _HeaderBar(
                     title: activeItem.label,
-                    email: _email ?? 'User',
+                    username: _username ?? 'User',
                     reminderCount: _reminderCount,
                   ),
                   Expanded(
@@ -200,12 +201,12 @@ class _DashboardShellState extends State<DashboardShell> {
 
 class _HeaderBar extends StatelessWidget {
   final String title;
-  final String email;
+  final String username;
   final int reminderCount;
 
   const _HeaderBar({
     required this.title,
-    required this.email,
+    required this.username,
     required this.reminderCount,
   });
 
@@ -258,7 +259,6 @@ class _HeaderBar extends StatelessWidget {
           ),
 
           const SizedBox(width: 12),
-          // ... sisa kode Container email tetap sama ...
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -274,7 +274,7 @@ class _HeaderBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  email,
+                  username,
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
               ],
