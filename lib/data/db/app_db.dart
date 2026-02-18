@@ -236,11 +236,13 @@ class AppDb {
   // --- FUNGSI AMBIL SEMUA TRANSAKSI DENGAN JOIN ---
   Future<List<Map<String, dynamic>>> getAllTransactions() async {
     final db = await database;
-    // Kita melakukan JOIN agar mendapatkan kolom description dari tabel items
+    // JOIN items for description & documents for doc_number
     return await db.rawQuery('''
-      SELECT t.*, i.description, i.limit_value
+      SELECT t.*, i.description, i.limit_value,
+             COALESCE(d.doc_number, '-') as doc_number
       FROM transactions t
       LEFT JOIN items i ON t.item_id = i.id
+      LEFT JOIN documents d ON t.document_id = d.id
       ORDER BY t.date DESC, t.id DESC
     ''');
   }
@@ -270,11 +272,11 @@ class AppDb {
   }
 
   /// Insert dokumen baru, return id-nya
-  Future<int> insertDocument(String docNumber) async {
+  Future<int> insertDocument(String docNumber, {String? date}) async {
     final db = await database;
     return await db.insert('documents', {
       'doc_number': docNumber.trim(),
-      'created_at': DateTime.now().toIso8601String(),
+      'created_at': date ?? DateTime.now().toIso8601String(),
     });
   }
 
@@ -308,14 +310,15 @@ class AppDb {
     return await db.delete('document_items', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Ambil semua item dalam satu dokumen (JOIN dengan items)
+  /// Ambil semua item dalam satu dokumen (JOIN dengan items) + consumed qty
   Future<List<Map<String, dynamic>>> getDocumentItems(int documentId) async {
     final db = await database;
     return await db.rawQuery('''
       SELECT di.id as doc_item_id, di.document_id, di.item_id, di.created_at as added_at,
              di.limit_value as doc_limit_value, di.uom as doc_uom,
              i.code, i.description, i.limit_value as item_limit_value, i.uom as item_uom,
-             i.is_reminder, i.reminder_limit
+             i.is_reminder, i.reminder_limit,
+             COALESCE((SELECT SUM(t.value) FROM transactions t WHERE t.item_id = di.item_id AND t.document_id = di.document_id), 0) as consumed
       FROM document_items di
       LEFT JOIN items i ON di.item_id = i.id
       WHERE di.document_id = ?
@@ -356,6 +359,71 @@ class AppDb {
       limit: 1,
     );
     return result.isNotEmpty;
+  }
+
+  /// Get total quota from all document_items (sum of limit_value)
+  Future<double> getTotalDocumentQuota() async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT COALESCE(SUM(limit_value), 0) as total FROM document_items
+    ''');
+    return (result.first['total'] as num?)?.toDouble() ?? 0.0;
+  }
+
+  /// Get total consumed quota from all transactions
+  Future<double> getTotalConsumedQuota() async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT COALESCE(SUM(value), 0) as total FROM transactions
+    ''');
+    return (result.first['total'] as num?)?.toDouble() ?? 0.0;
+  }
+
+  /// Get all documents that contain a specific item, with limit, reminder, and consumed quota
+  Future<List<Map<String, dynamic>>> getDocumentDetailsForItem(int itemId) async {
+    final db = await database;
+    return await db.rawQuery('''
+      SELECT di.id as doc_item_id, di.document_id, di.item_id,
+             di.limit_value as doc_limit_value, di.uom as doc_uom,
+             d.doc_number, d.created_at as doc_date,
+             i.is_reminder, i.reminder_limit,
+             COALESCE((SELECT SUM(t.value) FROM transactions t WHERE t.item_id = di.item_id AND t.document_id = di.document_id), 0) as consumed
+      FROM document_items di
+      JOIN documents d ON di.document_id = d.id
+      JOIN items i ON di.item_id = i.id
+      WHERE di.item_id = ?
+      ORDER BY d.doc_number ASC
+    ''', [itemId]);
+  }
+
+  /// Check if a document has any transactions at all
+  Future<bool> documentHasTransactions(int documentId) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT COUNT(*) as cnt FROM transactions
+      WHERE document_id = ?
+    ''', [documentId]);
+    return (result.first['cnt'] as int? ?? 0) > 0;
+  }
+
+  /// Check if item has any transactions in a specific document
+  Future<bool> hasTransactionsInDoc(int itemId, int documentId) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT COUNT(*) as cnt FROM transactions
+      WHERE item_id = ? AND document_id = ?
+    ''', [itemId, documentId]);
+    return (result.first['cnt'] as int? ?? 0) > 0;
+  }
+
+  /// Update limit_value on a document_item
+  Future<int> updateDocumentItem(int docItemId, {double? limitValue, String? uom}) async {
+    final db = await database;
+    final data = <String, dynamic>{};
+    if (limitValue != null) data['limit_value'] = limitValue;
+    if (uom != null) data['uom'] = uom;
+    if (data.isEmpty) return 0;
+    return await db.update('document_items', data, where: 'id = ?', whereArgs: [docItemId]);
   }
 
   /// Ambil semua dokumen beserta jumlah item

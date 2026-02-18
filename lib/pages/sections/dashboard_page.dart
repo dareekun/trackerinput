@@ -28,17 +28,10 @@ class _DashboardPageState extends State<DashboardPage> {
   /// Fungsi untuk mengambil dan menghitung data dari database secara real-time
   Future<void> _loadStats() async {
     final items = await AppDb.instance.getAllItems();
-    final transactions = await AppDb.instance.getAllTransactions();
 
-    double quotaSum = 0;
-    for (var item in items) {
-      quotaSum += (item['limit_value'] as num? ?? 0).toDouble();
-    }
-
-    double consumedSum = 0;
-    for (var tx in transactions) {
-      consumedSum += (tx['value'] as num? ?? 0).toDouble();
-    }
+    // Calculate total quota from document_items (per-document limits)
+    final quotaSum = await AppDb.instance.getTotalDocumentQuota();
+    final consumedSum = await AppDb.instance.getTotalConsumedQuota();
 
     if (mounted) {
       setState(() {

@@ -260,6 +260,10 @@ Widget build(BuildContext context) {
         onSort: (idx, asc) => _sort((d) => d['description'] ?? "", idx, asc),
       ),
       DataColumn(
+        label: const Text('Document', style: style),
+        onSort: (idx, asc) => _sort((d) => d['doc_number'] ?? "", idx, asc),
+      ),
+      DataColumn(
         label: const Text('Value', style: style),
         numeric: true,
         onSort: (idx, asc) => _sort((d) => d['value'], idx, asc),
@@ -270,7 +274,7 @@ Widget build(BuildContext context) {
       ),
       const DataColumn(
         label: Text('Actions', style: style),
-      ), // Pastikan label sama
+      ),
     ];
   }
 
@@ -293,6 +297,12 @@ Widget build(BuildContext context) {
           Text(
             tx['description'] ?? '-',
             style: TextStyle(color: cs.onSurfaceVariant),
+          ),
+        ),
+        DataCell(
+          Text(
+            tx['doc_number'] ?? '-',
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
           ),
         ),
         DataCell(

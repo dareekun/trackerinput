@@ -98,7 +98,7 @@ class HistoryService {
     _autoFitColumnWidth(sheetItem, itemHeaders.length, dbItems.length + 1);
 
     // --- SHEET 1: HISTORY DATA ---
-    List<String> headers = ["No", "Item Code", "Description", "Usage", "Date"];
+    List<String> headers = ["No", "Item Code", "Description", "Document", "Usage", "Date"];
     for (var i = 0; i < headers.length; i++) {
       var cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
       cell.value = TextCellValue(headers[i]);
@@ -112,6 +112,7 @@ class HistoryService {
         IntCellValue(i + 1),
         TextCellValue(tx['item_code'].toString()),
         TextCellValue(tx['description'] ?? "-"),
+        TextCellValue(tx['doc_number'] ?? "-"),
         DoubleCellValue(double.tryParse(tx['value'].toString()) ?? 0.0),
         TextCellValue(tx['date'].toString()),
       ];

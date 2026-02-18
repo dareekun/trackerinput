@@ -24,6 +24,9 @@ class _DocumentListPageState extends State<DocumentListPage> {
   List<Map<String, dynamic>> _expandedItems = [];
   bool _loadingItems = false;
 
+  // Track which documents have transactions (used → delete disabled)
+  final Map<int, bool> _docHasTransactions = {};
+
   @override
   void initState() {
     super.initState();
@@ -33,10 +36,19 @@ class _DocumentListPageState extends State<DocumentListPage> {
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     final data = await AppDb.instance.getAllDocumentsWithItemCount();
+    // Pre-load transaction status for all documents
+    final txMap = <int, bool>{};
+    for (final doc in data) {
+      final docId = doc['id'] as int;
+      txMap[docId] = await AppDb.instance.documentHasTransactions(docId);
+    }
     if (!mounted) return;
     setState(() {
       _allDocs = data;
       _filteredDocs = data;
+      _docHasTransactions
+        ..clear()
+        ..addAll(txMap);
       _isLoading = false;
       _applyFilter();
     });
@@ -84,10 +96,12 @@ class _DocumentListPageState extends State<DocumentListPage> {
     });
 
     final items = await AppDb.instance.getDocumentItems(docId);
+    final hasTransactions = await AppDb.instance.documentHasTransactions(docId);
     if (!mounted) return;
     setState(() {
       _expandedItems = items;
       _loadingItems = false;
+      _docHasTransactions[docId] = hasTransactions;
     });
   }
 
@@ -305,13 +319,25 @@ class _DocumentListPageState extends State<DocumentListPage> {
                       ),
                       onPressed: () => _toggleExpand(docId),
                     ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        color: cs.error,
-                        size: 20,
-                      ),
-                      onPressed: () => _confirmDeleteDoc(docId, docNumber),
+                    Builder(
+                      builder: (_) {
+                        final hasUsage = _docHasTransactions[docId] ?? false;
+                        return IconButton(
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            color: hasUsage
+                                ? cs.outline.withOpacity(0.3)
+                                : cs.error,
+                            size: 20,
+                          ),
+                          onPressed: hasUsage
+                              ? null
+                              : () => _confirmDeleteDoc(docId, docNumber),
+                          tooltip: hasUsage
+                              ? 'Cannot delete — document has transactions'
+                              : 'Delete document',
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -424,16 +450,31 @@ class _DocumentListPageState extends State<DocumentListPage> {
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
-                                SizedBox(
-                                  width: 48,
-                                  child: IconButton(
-                                    icon: Icon(Icons.remove_circle_outline,
-                                        color: cs.error, size: 18),
-                                    onPressed: () => _confirmRemoveItem(
-                                      item['doc_item_id'] as int,
-                                      item['code'] ?? '-',
-                                    ),
-                                  ),
+                                Builder(
+                                  builder: (_) {
+                                    final itemUsed = ((item['consumed'] as num?) ?? 0) > 0;
+                                    return SizedBox(
+                                      width: 48,
+                                      child: IconButton(
+                                        icon: Icon(
+                                          Icons.remove_circle_outline,
+                                          color: itemUsed
+                                              ? cs.outline.withOpacity(0.3)
+                                              : cs.error,
+                                          size: 18,
+                                        ),
+                                        onPressed: itemUsed
+                                            ? null
+                                            : () => _confirmRemoveItem(
+                                                  item['doc_item_id'] as int,
+                                                  item['code'] ?? '-',
+                                                ),
+                                        tooltip: itemUsed
+                                            ? 'Cannot remove — item already used'
+                                            : 'Remove item',
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

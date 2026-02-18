@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../data/db/app_db.dart';
 import '../../data/session/refresh_notifier.dart';
 
@@ -15,6 +16,7 @@ class _RegisterDocPageState extends State<RegisterDocPage> {
   final _docNumberCtl = TextEditingController();
   bool _docConfirmed = false; // Step 1 done (locally, NOT saved to DB yet)
   String? _currentDocNumber;
+  DateTime _docDate = DateTime.now();
 
   // === Item Form (new item) ===
   final _itemFormKey = GlobalKey<FormState>();
@@ -295,8 +297,11 @@ class _RegisterDocPageState extends State<RegisterDocPage> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Insert document
-      final docId = await AppDb.instance.insertDocument(_currentDocNumber!);
+      // 1. Insert document with date
+      final docId = await AppDb.instance.insertDocument(
+        _currentDocNumber!,
+        date: DateFormat('yyyy-MM-dd').format(_docDate),
+      );
 
       // 2. Insert each staged item
       for (final staged in _stagedItems) {
@@ -352,6 +357,7 @@ class _RegisterDocPageState extends State<RegisterDocPage> {
       setState(() {
         _docConfirmed = false;
         _currentDocNumber = null;
+        _docDate = DateTime.now();
         _stagedItems = [];
         _useExistingItem = false;
         _isSaving = false;
@@ -371,6 +377,7 @@ class _RegisterDocPageState extends State<RegisterDocPage> {
     setState(() {
       _docConfirmed = false;
       _currentDocNumber = null;
+      _docDate = DateTime.now();
       _stagedItems = [];
       _useExistingItem = false;
     });
@@ -458,6 +465,26 @@ class _RegisterDocPageState extends State<RegisterDocPage> {
             validator: (v) => (v ?? '').trim().isEmpty ? 'Required' : null,
           ),
           const SizedBox(height: 16),
+          InkWell(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _docDate,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null) setState(() => _docDate = picked);
+            },
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Document Date',
+                prefixIcon: Icon(Icons.calendar_month),
+                border: OutlineInputBorder(),
+              ),
+              child: Text(DateFormat('EEEE, dd MMMM yyyy').format(_docDate)),
+            ),
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -487,7 +514,7 @@ class _RegisterDocPageState extends State<RegisterDocPage> {
           'Document: $_currentDocNumber',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text('${_stagedItems.length} item(s) staged'),
+        subtitle: Text('${_stagedItems.length} item(s) staged  •  Date: ${DateFormat('dd MMM yyyy').format(_docDate)}'),
       ),
     );
   }
